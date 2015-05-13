@@ -194,13 +194,16 @@ class generaterawdb(object):
         finally:
             connect.close()
 
+    def _symbolR3D(self, r3dlist):
+        pass
+
     def generatedb(self):
         self._allfiles = []
         self._allfiles = [os.path.join(root, singlefile) for root, subfolder, files in os.walk(self._scanpath) for
                           singlefile in files]
         # self._allfiles.sort()
         arilist = [item for item in self._allfiles if os.path.splitext(item)[-1] == '.ari']
-        R3dlist = [item for item in self._allfiles if os.path.splitext(item)[-1] == '.R3D']
+        r3dlist = [item for item in self._allfiles if os.path.splitext(item)[-1] == '.R3D']
 
         if os.path.exists(self._temppath):
             shutil.rmtree(self._temppath)
