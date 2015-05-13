@@ -194,8 +194,6 @@ class generaterawdb(object):
         finally:
             connect.close()
 
-    def _symbolR3D(self, r3dlist):
-        pass
 
     def generatedb(self):
         self._allfiles = []
