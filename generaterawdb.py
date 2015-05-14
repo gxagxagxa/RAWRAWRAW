@@ -291,15 +291,15 @@ class generaterawdb(object):
                                             item[77], item[79], item[84], item[83],
                                             item[81], item[86], '--', item[82], item[85],
                                             os.path.basename(r3dlist[index/2 - 1]),
-                                            item[10], item[11], item[11], item[7], item[56], item[8], item[8],
-                                            item[14],
-                                            item[21], item[53] + ' ms', item[55], 'N/A', item[25], item[24], item[25],
+                                            item[9], item[10], item[10], item[6], item[55], item[7], item[7],
+                                            item[13],
+                                            item[20], item[52] + ' ms', item[54], 'N/A', item[24], item[23], item[24],
                                             123456,
-                                            item[13], '--', item[118], item[22],
-                                            item[23],
-                                            item[22], item[23],
+                                            item[12], '--', item[117], item[21],
+                                            item[22],
+                                            item[21], item[22],
                                             item[33],
-                                            item[35], item[31], item[71], '--', 'mm', item[69], item[68], item[67],
+                                            item[34], item[30], item[70], '--', 'mm', item[68], item[67], item[66],
                                             item[117],
                                             'r3d'))
 
@@ -461,7 +461,7 @@ class generaterawdb(object):
         self._initsqlitedb(dbpath)
         self._sqliteari(arilist, dbpath)
 
-        # self._sqliter3d(r3dlist, dbpath)
+        self._sqliter3d(r3dlist, dbpath)
 
         endtime = datetime.datetime.now()
         print(endtime - starttime)
