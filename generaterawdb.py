@@ -26,6 +26,7 @@ class generaterawdb(object):
         pass
 
 
+
     def _symbolari(self, arilist):
         for index, item in enumerate(arilist):
             try:
@@ -470,3 +471,4 @@ if __name__ == '__main__':
     testclass = generaterawdb()
     testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
     testclass.generatedb()
+    pass
