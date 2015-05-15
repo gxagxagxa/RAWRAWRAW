@@ -294,14 +294,14 @@ class generaterawdb(object):
                                             os.path.basename(r3dlist[index / 2 - 1]),
                                             item[9], item[10], item[10], item[6], item[55], item[7], item[7],
                                             item[13],
-                                            item[20], item[52] + ' ms', item[54], 'N/A', item[24], item[23], item[24],
+                                            item[19], item[52] + ' ms', item[54], 'N/A', item[24], item[23], item[24],
                                             self.__timecodetoframe(item[26], item[24]),
                                             item[12], '--', item[117], item[21],
                                             item[22],
                                             item[21], item[22],
-                                            item[33],
+                                            item[32],
                                             item[34], item[30], item[70], '--', 'mm', item[68], item[67], item[66],
-                                            item[117],
+                                            item[116],
                                             'r3d', item[28]))
 
                     cursor.close()
@@ -462,16 +462,16 @@ class generaterawdb(object):
             if 'timecode' in line:
                 # print(line.split(' : ')[-1].lstrip().rstrip())
                 movmetadata['MASTER_TC'] = line.split(' : ')[-1].lstrip().rstrip()
-            if 'Stream' in line and 'Video' in line:
+            if 'Stream' in line and 'Video' in line and 'fps' in line:
                 # print(line.split(',')[4].lstrip().rstrip().split(' ')[0])
-                movmetadata['fps'] = line.split(',')[4].lstrip().rstrip().split(' ')[0]
-                movmetadata['width'] = line.split(',')[2].lstrip().rstrip().split('x')[0]
-                movmetadata['height'] = line.split(',')[2].lstrip().rstrip().split('x')[1]
+                movmetadata['fps'] = line.split('fps')[0].lstrip().rstrip().split(',')[-1].lstrip().rstrip()
+                movmetadata['width'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[0]
+                movmetadata['height'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[1]
         return movmetadata
 
     def __timecodetoframe(self, timecode, fps):
         print('==== __timecodetoframe  ====')
-        ffps = int(fps)
+        ffps = float(fps)
         hh = int(timecode[0:2])
         mm = int(timecode[3:5])
         ss = int(timecode[6:8])
@@ -488,7 +488,7 @@ class generaterawdb(object):
 
     def __frametotimecode(self, frame, fps):
         print('==== __frametotimecode  ====')
-        ffps = int(fps)
+        ffps = float(fps)
         fframe = int(frame)
         hh = fframe // (3600 * ffps)
         fframe = fframe - hh * 3600 * ffps
@@ -603,6 +603,7 @@ class generaterawdb(object):
 
 if __name__ == '__main__':
     testclass = generaterawdb()
-    testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
+    # testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
+    testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
     testclass.generatedb()
     pass
