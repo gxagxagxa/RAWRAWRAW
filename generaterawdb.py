@@ -469,6 +469,7 @@ class generaterawdb(object):
                 movmetadata['height'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[1]
         return movmetadata
 
+
     def __timecodetoframe(self, timecode, fps):
         print('==== __timecodetoframe  ====')
         ffps = float(fps)
@@ -481,7 +482,7 @@ class generaterawdb(object):
         else:
             ff = int(timecode[9:11])
         # print(ffps, hh, mm, ss, ff)
-        framecount = hh * 3600 * ffps + mm * 60 * ffps + ss * ffps + ff
+        framecount = int((hh * 3600 * ffps) + int(mm * 60 * ffps) + int(ss * ffps) + ff)
         # print(framecount)
         return framecount
 
@@ -490,10 +491,10 @@ class generaterawdb(object):
         print('==== __frametotimecode  ====')
         ffps = float(fps)
         fframe = int(frame)
-        hh = fframe // (3600 * ffps)
-        fframe = fframe - hh * 3600 * ffps
-        mm = fframe // (60 * ffps)
-        fframe = fframe - mm * 60 * ffps
+        hh = fframe // int(3600 * ffps)
+        fframe = fframe - int(hh * 3600 * ffps)
+        mm = fframe // int(60 * ffps)
+        fframe = fframe - int(mm * 60 * ffps)
         ss = fframe // ffps
         ff = fframe - ss * ffps
         tcstring = '%02d:%02d:%02d:%02d' % (hh, mm, ss, ff)
@@ -571,6 +572,97 @@ class generaterawdb(object):
             connect.close()
 
 
+    def _processmp4metadata(self, mp4message):
+        mp4metadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', 'duration': '00:00:00:00', 'creation_date': '',
+                       'creation_time': '', 'encoder': '', 'fps': '24', 'width': '', 'height': ''}
+        for index, line in enumerate(mp4message.split(os.linesep)):
+            # print(index, line)
+            if 'Duration' in line:
+                # print(line.split(',')[0].split(':')[-1].lstrip().rstrip())
+                mp4metadata['duration'] = line.split(',')[0].split(': ')[-1].lstrip().rstrip()
+            if 'creation_time' in line:
+                # print(line.split(' : ')[-1].lstrip().rstrip())
+                mp4metadata['creation_date'] = line.split(' : ')[-1].lstrip().rstrip().split(' ')[0]
+                mp4metadata['creation_time'] = line.split(' : ')[-1].lstrip().rstrip().split(' ')[1]
+            if 'encoder' in line:
+                # print(line.split(':')[-1].lstrip().rstrip())
+                mp4metadata['encoder'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'reel_name' in line:
+                # print(line.split(':')[-1].lstrip().rstrip())
+                mp4metadata['REEL'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'timecode' in line:
+                # print(line.split(' : ')[-1].lstrip().rstrip())
+                mp4metadata['MASTER_TC'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'Stream' in line and 'Video' in line and 'fps' in line:
+                # print(line.split(',')[4].lstrip().rstrip().split(' ')[0])
+                mp4metadata['fps'] = line.split('fps')[0].lstrip().rstrip().split(',')[-1].lstrip().rstrip()
+                mp4metadata['width'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[0]
+                mp4metadata['height'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[1]
+        return mp4metadata
+
+
+
+    def _sqlitemp4(self, mp4list, dbpath):
+        connect = sqlite3.connect(dbpath)
+        try:
+            cursor = connect.cursor()
+            for index, item in enumerate(mp4list):
+                os.symlink(item,
+                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4', '%08d.mp4' % index))
+                cmd = ['ffmpeg -i {0}'.format(
+                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4', '%08d.mp4' % index))]
+                message = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()[1]
+
+                mp4metadata = self._processmp4metadata(message)
+                # print(mp4metadata)
+                # print(index, item)
+
+                cursor.execute('INSERT INTO RAWMETADATA ('
+                               'FULLPATH,'
+                               'MASTER_TC,'
+                               'REEL,'
+                               'Camera_Clip_Name,'
+                               'System_Image_Creation_Date,'
+                               'System_Image_Creation_Time,'
+                               'Sensor_FPS,'
+                               'Project_FPS,'
+                               'Master_TC_Time_Base,'
+                               'Master_TC_Frame_Count,'
+                               'Recorder_Type,'
+                               'Image_Width,'
+                               'Image_Height,'
+                               'Active_Image_Width,'
+                               'Active_Image_Height,'
+                               'Active_Image_Top,'
+                               'Active_Image_Left,'
+                               'Full_Image_Width,'
+                               'Full_Image_Height,'
+                               'RAWTYPE,'
+                               'END_TC'
+                               ') VALUES ('
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                               (mp4list[index], mp4metadata['MASTER_TC'], mp4metadata['REEL'],
+                                os.path.basename(mp4list[index]), mp4metadata['creation_date'],
+                                mp4metadata['creation_time'], mp4metadata['fps'], mp4metadata['fps'],
+                                mp4metadata['fps'],
+                                self.__timecodetoframe(mp4metadata['MASTER_TC'], mp4metadata['fps']),
+                                mp4metadata['encoder'],
+                                mp4metadata['width'], mp4metadata['height'],
+                                mp4metadata['width'], mp4metadata['height'], '0', '0', mp4metadata['width'],
+                                mp4metadata['height'], 'mp4',
+                                self.__timecodeadd(mp4metadata['MASTER_TC'], mp4metadata['duration'],
+                                                   mp4metadata['fps'])))
+
+            cursor.close()
+            connect.commit()
+
+        except:
+            print('something error in mp4 symbol link')
+        finally:
+            connect.close()
+
+
     def generatedb(self):
         self._allfiles = []
         self._allfiles = [os.path.join(root, singlefile) for root, subfolder, files in os.walk(self._scanpath) for
@@ -579,6 +671,7 @@ class generaterawdb(object):
         arilist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.ari']
         r3dlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.r3d']
         movlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mov']
+        mp4list = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mp4']
 
         if os.path.exists(self._temppath):
             shutil.rmtree(self._temppath)
@@ -587,6 +680,7 @@ class generaterawdb(object):
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'ari'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov'))
+        os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4'))
 
         starttime = datetime.datetime.now()
         print(starttime)
@@ -596,6 +690,7 @@ class generaterawdb(object):
         self._sqliteari(arilist, dbpath)
         self._sqliter3d(r3dlist, dbpath)
         self._sqlitemov(movlist, dbpath)
+        self._sqlitemp4(mp4list, dbpath)
 
         endtime = datetime.datetime.now()
         print(endtime - starttime)
