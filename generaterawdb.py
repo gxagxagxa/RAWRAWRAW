@@ -26,13 +26,12 @@ class generaterawdb(object):
         pass
 
 
-
     def _symbolari(self, arilist):
         for index, item in enumerate(arilist):
             try:
                 os.symlink(item,
                            os.path.join(self._temppath, os.path.basename(self._scanpath), 'ari', '%08d.ari' % index))
-            finally:
+            except:
                 print('something error in ari symbol link')
         cmd = 'ARRIMetaExtract_CMD -i {0} -s \",\" -o {0}'.format(
             os.path.join(self._temppath, os.path.basename(self._scanpath), 'ari'))
@@ -162,7 +161,8 @@ class generaterawdb(object):
                                            'Master_Slave_Setup_Info,'
                                            'S3D_Eye_Info,'
                                            'Sound_Roll,'
-                                           'RAWTYPE'
+                                           'RAWTYPE,'
+                                           'END_TC'
                                            ') VALUES ('
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
@@ -174,7 +174,7 @@ class generaterawdb(object):
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
-                                           '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                           '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                            (arilist[index - 1], item[1], item[2], item[3], item[4], item[5], item[6],
                                             item[7], item[8], item[9], item[10], item[11], item[12], item[13], item[14],
                                             item[15], item[16], item[17], item[18], item[19], item[20], item[21],
@@ -200,7 +200,7 @@ class generaterawdb(object):
                                             item[102],
                                             item[103], item[104], item[105], item[106], item[107], item[108], item[109],
                                             item[110], item[111],
-                                            'ari'))
+                                            'ari', item[1]))
                     cursor.close()
                     connect.commit()
         except:
@@ -212,7 +212,7 @@ class generaterawdb(object):
 
     def _sqliter3d(self, r3dlist, dbpath):
         r3dscv = os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D', 'R3D_metadata_output.csv')
-        print(r3dscv)
+        # print(r3dscv)
         for index, item in enumerate(r3dlist):
             try:
                 os.symlink(item,
@@ -221,7 +221,7 @@ class generaterawdb(object):
                     os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D', '%08d.R3D' % index), r3dscv)
                 subprocess.call(cmd, shell=True)
 
-            finally:
+            except:
                 print('something error in R3D symbol link')
 
         connect = sqlite3.connect(dbpath)
@@ -232,8 +232,7 @@ class generaterawdb(object):
                 with open(r3dscv) as csvfile:
                     metadata = csv.reader(csvfile, delimiter=',')
                     for index, item in enumerate(metadata):
-                        if index %2 == 1:
-
+                        if index % 2 == 1:
                             cursor.execute('INSERT INTO RAWMETADATA ('
                                            'FULLPATH,'
                                            'MASTER_TC,'
@@ -281,27 +280,29 @@ class generaterawdb(object):
                                            'Lens_Focal_Length,'
                                            'Lens_Iris,'
                                            'S3D_Eye_Info,'
-                                           'RAWTYPE'
+                                           'RAWTYPE,'
+                                           'END_TC'
                                            ') VALUES ('
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
-                                           '?, ?, ?, ?, ?, ?, ?, ?)',
-                                           (r3dlist[index/2 - 1], item[27], os.path.basename(r3dlist[index/2 - 1])[:15],
+                                           '?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                           (r3dlist[index / 2 - 1], item[26],
+                                            os.path.basename(r3dlist[index / 2 - 1])[:15],
                                             item[77], item[79], item[84], item[83],
                                             item[81], item[86], '--', item[82], item[85],
-                                            os.path.basename(r3dlist[index/2 - 1]),
+                                            os.path.basename(r3dlist[index / 2 - 1]),
                                             item[9], item[10], item[10], item[6], item[55], item[7], item[7],
                                             item[13],
                                             item[20], item[52] + ' ms', item[54], 'N/A', item[24], item[23], item[24],
-                                            123456,
+                                            self.__timecodetoframe(item[26], item[24]),
                                             item[12], '--', item[117], item[21],
                                             item[22],
                                             item[21], item[22],
                                             item[33],
                                             item[34], item[30], item[70], '--', 'mm', item[68], item[67], item[66],
                                             item[117],
-                                            'r3d'))
+                                            'r3d', item[28]))
 
                     cursor.close()
                     connect.commit()
@@ -429,7 +430,8 @@ class generaterawdb(object):
                 'Master_Slave_Setup_Info TEXT,'
                 'S3D_Eye_Info TEXT,'
                 'Sound_Roll TEXT,'
-                'RAWTYPE TEXT'
+                'RAWTYPE TEXT,'
+                'END_TC TEXT'
                 ');')
             cursor.close()
             connect.commit()
@@ -439,13 +441,141 @@ class generaterawdb(object):
             connect.close()
 
 
+    def _processmovmetadata(self, movmessage):
+        movmetadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', }
+        for index, line in enumerate(movmessage.split(os.linesep)):
+            # print(index, line)
+            if 'Duration' in line:
+                # print(line.split(',')[0].split(':')[-1].lstrip().rstrip())
+                movmetadata['duration'] = line.split(',')[0].split(': ')[-1].lstrip().rstrip()
+            if 'creation_time' in line:
+                # print(line.split(' : ')[-1].lstrip().rstrip())
+                movmetadata['creation_date'] = line.split(' : ')[-1].lstrip().rstrip().split(' ')[0]
+                movmetadata['creation_time'] = line.split(' : ')[-1].lstrip().rstrip().split(' ')[1]
+            if 'encoder' in line:
+                # print(line.split(':')[-1].lstrip().rstrip())
+                movmetadata['encoder'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'reel_name' in line:
+                # print(line.split(':')[-1].lstrip().rstrip())
+                movmetadata['REEL'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'timecode' in line:
+                # print(line.split(' : ')[-1].lstrip().rstrip())
+                movmetadata['MASTER_TC'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'Stream' in line and 'Video' in line:
+                # print(line.split(',')[4].lstrip().rstrip().split(' ')[0])
+                movmetadata['fps'] = line.split(',')[4].lstrip().rstrip().split(' ')[0]
+                movmetadata['width'] = line.split(',')[2].lstrip().rstrip().split('x')[0]
+                movmetadata['height'] = line.split(',')[2].lstrip().rstrip().split('x')[1]
+        return movmetadata
+
+    def __timecodetoframe(self, timecode, fps):
+        print('==== __timecodetoframe  ====')
+        ffps = int(fps)
+        hh = int(timecode[0:2])
+        mm = int(timecode[3:5])
+        ss = int(timecode[6:8])
+        ff = 0
+        if timecode[8:9] == '.':
+            ff = int(float(timecode[9:11]) / 100.0 * ffps)
+        else:
+            ff = int(timecode[9:11])
+        # print(ffps, hh, mm, ss, ff)
+        framecount = hh * 3600 * ffps + mm * 60 * ffps + ss * ffps + ff
+        # print(framecount)
+        return framecount
+
+
+    def __frametotimecode(self, frame, fps):
+        print('==== __frametotimecode  ====')
+        ffps = int(fps)
+        fframe = int(frame)
+        hh = fframe // (3600 * ffps)
+        fframe = fframe - hh * 3600 * ffps
+        mm = fframe // (60 * ffps)
+        fframe = fframe - mm * 60 * ffps
+        ss = fframe // ffps
+        ff = fframe - ss * ffps
+        tcstring = '%02d:%02d:%02d:%02d' % (hh, mm, ss, ff)
+        # print(tcstring)
+        return tcstring
+
+
+    def __timecodeadd(self, tc1, tc2, fps):
+        print('==== __timecodeadd  ====')
+        frame1 = self.__timecodetoframe(tc1, fps)
+        frame2 = self.__timecodetoframe(tc2, fps)
+        # print(frame1, frame2)
+        frame2 = frame1 + frame2
+        return self.__frametotimecode(frame2, fps)
+
+
+    def _sqlitemov(self, movlist, dbpath):
+        connect = sqlite3.connect(dbpath)
+        try:
+            cursor = connect.cursor()
+            for index, item in enumerate(movlist):
+                os.symlink(item,
+                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov', '%08d.mov' % index))
+                cmd = ['ffmpeg -i {0}'.format(
+                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov', '%08d.mov' % index))]
+                message = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()[1]
+
+                movmetadata = self._processmovmetadata(message)
+                # print(movmetadata)
+                # print(index, item)
+
+                cursor.execute('INSERT INTO RAWMETADATA ('
+                               'FULLPATH,'
+                               'MASTER_TC,'
+                               'REEL,'
+                               'Camera_Clip_Name,'
+                               'System_Image_Creation_Date,'
+                               'System_Image_Creation_Time,'
+                               'Sensor_FPS,'
+                               'Project_FPS,'
+                               'Master_TC_Time_Base,'
+                               'Master_TC_Frame_Count,'
+                               'Image_Width,'
+                               'Image_Height,'
+                               'Active_Image_Width,'
+                               'Active_Image_Height,'
+                               'Active_Image_Top,'
+                               'Active_Image_Left,'
+                               'Full_Image_Width,'
+                               'Full_Image_Height,'
+                               'RAWTYPE,'
+                               'END_TC'
+                               ') VALUES ('
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                               (movlist[index], movmetadata['MASTER_TC'], movmetadata['REEL'],
+                                os.path.basename(movlist[index]), movmetadata['creation_date'],
+                                movmetadata['creation_time'], movmetadata['fps'], movmetadata['fps'],
+                                movmetadata['fps'],
+                                self.__timecodetoframe(movmetadata['MASTER_TC'], movmetadata['fps']),
+                                movmetadata['width'], movmetadata['height'],
+                                movmetadata['width'], movmetadata['height'], '0', '0', movmetadata['width'],
+                                movmetadata['height'], 'mov',
+                                self.__timecodeadd(movmetadata['MASTER_TC'], movmetadata['duration'],
+                                                   movmetadata['fps'])))
+
+            cursor.close()
+            connect.commit()
+
+        except:
+            print('something error in mov symbol link')
+        finally:
+            connect.close()
+
+
     def generatedb(self):
         self._allfiles = []
         self._allfiles = [os.path.join(root, singlefile) for root, subfolder, files in os.walk(self._scanpath) for
                           singlefile in files]
         # self._allfiles.sort()
-        arilist = [item for item in self._allfiles if os.path.splitext(item)[-1] == '.ari']
-        r3dlist = [item for item in self._allfiles if os.path.splitext(item)[-1] == '.R3D']
+        arilist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.ari']
+        r3dlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.r3d']
+        movlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mov']
 
         if os.path.exists(self._temppath):
             shutil.rmtree(self._temppath)
@@ -453,6 +583,7 @@ class generaterawdb(object):
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath)))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'ari'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D'))
+        os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov'))
 
         starttime = datetime.datetime.now()
         print(starttime)
@@ -460,8 +591,8 @@ class generaterawdb(object):
         dbpath = os.path.join(os.path.expanduser('~'), 'Desktop', os.path.basename(self._scanpath) + '.db')
         self._initsqlitedb(dbpath)
         self._sqliteari(arilist, dbpath)
-
         self._sqliter3d(r3dlist, dbpath)
+        self._sqlitemov(movlist, dbpath)
 
         endtime = datetime.datetime.now()
         print(endtime - starttime)
