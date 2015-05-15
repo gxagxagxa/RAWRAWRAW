@@ -442,7 +442,8 @@ class generaterawdb(object):
 
 
     def _processmovmetadata(self, movmessage):
-        movmetadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', }
+        movmetadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', 'duration': '00:00:00:00', 'creation_date': '',
+                       'creation_time': '', 'encoder': '', 'fps': '24', 'width': '', 'height': ''}
         for index, line in enumerate(movmessage.split(os.linesep)):
             # print(index, line)
             if 'Duration' in line:
@@ -535,6 +536,7 @@ class generaterawdb(object):
                                'Project_FPS,'
                                'Master_TC_Time_Base,'
                                'Master_TC_Frame_Count,'
+                               'Recorder_Type,'
                                'Image_Width,'
                                'Image_Height,'
                                'Active_Image_Width,'
@@ -547,12 +549,13 @@ class generaterawdb(object):
                                'END_TC'
                                ') VALUES ('
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
-                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                (movlist[index], movmetadata['MASTER_TC'], movmetadata['REEL'],
                                 os.path.basename(movlist[index]), movmetadata['creation_date'],
                                 movmetadata['creation_time'], movmetadata['fps'], movmetadata['fps'],
                                 movmetadata['fps'],
                                 self.__timecodetoframe(movmetadata['MASTER_TC'], movmetadata['fps']),
+                                movmetadata['encoder'],
                                 movmetadata['width'], movmetadata['height'],
                                 movmetadata['width'], movmetadata['height'], '0', '0', movmetadata['width'],
                                 movmetadata['height'], 'mov',
