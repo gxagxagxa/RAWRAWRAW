@@ -11,6 +11,7 @@ import datetime
 import shutil
 import sqlite3
 import struct
+import re
 
 APP_PATH = os.path.realpath(sys.path[0])
 
@@ -472,7 +473,7 @@ class generaterawdb(object):
 
 
     def __timecodetoframe(self, timecode, fps):
-        print('==== __timecodetoframe  ====')
+        # print('==== __timecodetoframe  ====')
         ffps = float(fps)
         hh = int(timecode[0:2])
         mm = int(timecode[3:5])
@@ -489,7 +490,7 @@ class generaterawdb(object):
 
 
     def __frametotimecode(self, frame, fps):
-        print('==== __frametotimecode  ====')
+        # print('==== __frametotimecode  ====')
         ffps = float(fps)
         fframe = int(frame)
         hh = fframe // int(3600 * ffps)
@@ -504,7 +505,7 @@ class generaterawdb(object):
 
 
     def __timecodeadd(self, tc1, tc2, fps):
-        print('==== __timecodeadd  ====')
+        # print('==== __timecodeadd  ====')
         frame1 = self.__timecodetoframe(tc1, fps)
         frame2 = self.__timecodetoframe(tc2, fps)
         # print(frame1, frame2)
@@ -664,7 +665,7 @@ class generaterawdb(object):
 
 
     def _sqlitedpx(self, dpxlist, dbpath):
-        print('==== _sqlitedpx  ====')
+        # print('==== _sqlitedpx  ====')
         connect = sqlite3.connect(dbpath)
         try:
             cursor = connect.cursor()
@@ -699,10 +700,18 @@ class generaterawdb(object):
                         # print(sss, kkk)
                 tc = ('%02x' % dpxheader[52]) + ':' + ('%02x' % dpxheader[53]) + ':' + (
                 '%02x' % dpxheader[54]) + ':' + ('%02x' % dpxheader[55])
+                if dpxheader[52] > 23 or dpxheader[52] < 0:
+                    tc = '00:00:00:00'
                 # print(tc)
+
                 fps = '%.2f' % dpxheader[47]
                 if float(fps) <= 0:
                     fps = '24'
+
+                reel =re.sub(r'\W', '', dpxheader[29])
+                if(len(reel)) == 0:
+                    reel = '--'
+                # print(reel)
 
                 cursor.execute('INSERT INTO RAWMETADATA ('
                                'FULLPATH, '
@@ -726,7 +735,7 @@ class generaterawdb(object):
                                ') VALUES ('
                                '?, ?, ?, ?, ?, ? ,?, ?, ?, ?,'
                                '?, ?, ?, ?, ?, ? , ?, ?)',
-                               (item, tc, dpxheader[29].rstrip(), os.path.basename(item),
+                               (item, tc, reel, os.path.basename(item),
                                 fps, fps, fps, self.__timecodetoframe(tc, fps), dpxheader[17], dpxheader[18],
                                 dpxheader[17], dpxheader[18], 0, 0, dpxheader[17], dpxheader[18], 'dpx',
                                 tc))
@@ -737,6 +746,97 @@ class generaterawdb(object):
 
         except:
             print('something error in sqlitedpx')
+        finally:
+            connect.close()
+
+
+    def _processmxfmetadata(self, mxfmessage):
+        mxfmetadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', 'duration': '00:00:00:00', 'creation_date': '',
+                       'creation_time': '', 'encoder': '', 'fps': '24', 'width': '', 'height': ''}
+        for index, line in enumerate(mxfmessage.split(os.linesep)):
+            # print(index, line)
+            if 'Duration' in line:
+                # print(line.split(',')[0].split(':')[-1].lstrip().rstrip())
+                mxfmetadata['duration'] = line.split(',')[0].split(': ')[-1].lstrip().rstrip()
+            if 'modification_date' in line or 'creation_time' in line:
+                # print(line.split(' : ')[-1].lstrip().rstrip())
+                mxfmetadata['creation_date'] = line.split(': ')[-1].lstrip().rstrip().split(' ')[0]
+                mxfmetadata['creation_time'] = line.split(': ')[-1].lstrip().rstrip().split(' ')[1]
+            if 'product_name' in line:
+                # print(line.split(':')[-1].lstrip().rstrip())
+                mxfmetadata['encoder'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'reel_name' in line:
+                # print(line.split(':')[-1].lstrip().rstrip())
+                mxfmetadata['REEL'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'timecode' in line:
+                # print(line.split(' : ')[-1].lstrip().rstrip())
+                mxfmetadata['MASTER_TC'] = line.split(' : ')[-1].lstrip().rstrip()
+            if 'Stream' in line and 'Video' in line and 'fps' in line:
+                # print(line.split(',')[4].lstrip().rstrip().split(' ')[0])
+                mxfmetadata['fps'] = line.split('tbr')[0].lstrip().rstrip().split(',')[-1].lstrip().rstrip()
+                mxfmetadata['width'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[0]
+                mxfmetadata['height'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[1]
+        # print(mxfmetadata)
+        return mxfmetadata
+
+
+    def _sqlitemxf(self, mxflist, dbpath):
+        connect = sqlite3.connect(dbpath)
+        try:
+            cursor = connect.cursor()
+            for index, item in enumerate(mxflist):
+                os.symlink(item,
+                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf', '%08d.mxf' % index))
+                cmd = ['ffmpeg -i {0}'.format(
+                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf', '%08d.mxf' % index))]
+                message = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()[1]
+
+                mxfmetadata = self._processmxfmetadata(message)
+                # print(mp4metadata)
+                # print(index, item)
+
+                cursor.execute('INSERT INTO RAWMETADATA ('
+                               'FULLPATH,'
+                               'MASTER_TC,'
+                               'REEL,'
+                               'Camera_Clip_Name,'
+                               'System_Image_Creation_Date,'
+                               'System_Image_Creation_Time,'
+                               'Sensor_FPS,'
+                               'Project_FPS,'
+                               'Master_TC_Time_Base,'
+                               'Master_TC_Frame_Count,'
+                               'Recorder_Type,'
+                               'Image_Width,'
+                               'Image_Height,'
+                               'Active_Image_Width,'
+                               'Active_Image_Height,'
+                               'Active_Image_Top,'
+                               'Active_Image_Left,'
+                               'Full_Image_Width,'
+                               'Full_Image_Height,'
+                               'RAWTYPE,'
+                               'END_TC'
+                               ') VALUES ('
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                               (item, mxfmetadata['MASTER_TC'], mxfmetadata['REEL'],
+                                os.path.basename(item), mxfmetadata['creation_date'],
+                                mxfmetadata['creation_time'], mxfmetadata['fps'], mxfmetadata['fps'],
+                                mxfmetadata['fps'],
+                                self.__timecodetoframe(mxfmetadata['MASTER_TC'], mxfmetadata['fps']),
+                                mxfmetadata['encoder'],
+                                mxfmetadata['width'], mxfmetadata['height'],
+                                mxfmetadata['width'], mxfmetadata['height'], '0', '0', mxfmetadata['width'],
+                                mxfmetadata['height'], 'mxf',
+                                self.__timecodeadd(mxfmetadata['MASTER_TC'], mxfmetadata['duration'],
+                                                   mxfmetadata['fps'])))
+
+            cursor.close()
+            connect.commit()
+
+        except:
+            print('something error in mxf symbol link')
         finally:
             connect.close()
 
@@ -753,6 +853,8 @@ class generaterawdb(object):
         movlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mov']
         mp4list = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mp4']
         dpxlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.dpx']
+        mxflist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mxf']
+
 
         if os.path.exists(self._temppath):
             shutil.rmtree(self._temppath)
@@ -763,17 +865,19 @@ class generaterawdb(object):
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx'))
+        os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf'))
 
         starttime = datetime.datetime.now()
         print(starttime)
 
         dbpath = os.path.join(os.path.expanduser('~'), 'Desktop', os.path.basename(self._scanpath) + '.db')
         self._initsqlitedb(dbpath)
-        # self._sqliteari(arilist, dbpath)
-        # self._sqliter3d(r3dlist, dbpath)
-        # self._sqlitemov(movlist, dbpath)
-        # self._sqlitemp4(mp4list, dbpath)
+        self._sqliteari(arilist, dbpath)
+        self._sqliter3d(r3dlist, dbpath)
+        self._sqlitemov(movlist, dbpath)
+        self._sqlitemp4(mp4list, dbpath)
         self._sqlitedpx(dpxlist, dbpath)
+        self._sqlitemxf(mxflist, dbpath)
 
         endtime = datetime.datetime.now()
         print(endtime - starttime)
