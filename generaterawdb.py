@@ -10,6 +10,7 @@ import sys
 import datetime
 import shutil
 import sqlite3
+import struct
 
 APP_PATH = os.path.realpath(sys.path[0])
 
@@ -601,7 +602,6 @@ class generaterawdb(object):
         return mp4metadata
 
 
-
     def _sqlitemp4(self, mp4list, dbpath):
         connect = sqlite3.connect(dbpath)
         try:
@@ -663,6 +663,86 @@ class generaterawdb(object):
             connect.close()
 
 
+    def _sqlitedpx(self, dpxlist, dbpath):
+        print('==== _sqlitedpx  ====')
+        connect = sqlite3.connect(dbpath)
+        try:
+            cursor = connect.cursor()
+            for index, item in enumerate(dpxlist):
+                os.symlink(item,
+                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index))
+                dpxheader = ()
+                with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index),
+                          'rb') as dpxfile:
+                    if struct.unpack('4s', dpxfile.read(4)) == 'SDPX':
+                        dpxfile.seek(0)
+                        dpxheader = struct.unpack(
+                            '<4s I 8s I I I I I 100s 24s 100s 200s 200s I 104s'  # 764 bytes [0:14]
+                            'H H I I 576s 52s'  # 1404 bytes[15:20]
+                            'I I f f I I 100s 24s 32s 32s 4h 2i 28s'  # 1660 bytes[21:37]
+                            '2s 2s 2s 6s 4s 32s I i i f f 32s 100s 56s'  # 1916 bytes[38:51]
+                            '4b 4b 4b f f f f f f f f f f 76s'  # 2044 bytes[47:66]
+                            '32s',  # 2076 bytes[67]
+                            dpxfile.read(2080))
+                    else:
+                        dpxfile.seek(0)
+                        dpxheader = struct.unpack(
+                            '>4s I 8s I I I I I 100s 24s 100s 200s 200s I 104s'  # 768 bytes [0:14]
+                            'H H I I 576s 52s'  # 1408 bytes[15:20]
+                            'I I f f I I 100s 24s 32s 32s 4h 2i 28s'  # 1664 bytes[21:37]
+                            '2s 2s 2s 6s 4s 32s I i i f f 32s 100s 56s'  # 1920 bytes[38:51]
+                            '4b 4b 4b f f f f f f f f f f 76s'  # 2048 bytes[47:66]
+                            '32s',  # 2080 bytes[67]
+                            dpxfile.read(2080))
+
+                        # for sss, kkk in enumerate(dpxheader):
+                        # print(sss, kkk)
+                tc = ('%02x' % dpxheader[52]) + ':' + ('%02x' % dpxheader[53]) + ':' + (
+                '%02x' % dpxheader[54]) + ':' + ('%02x' % dpxheader[55])
+                # print(tc)
+                fps = '%.2f' % dpxheader[47]
+                if float(fps) <= 0:
+                    fps = '24'
+
+                cursor.execute('INSERT INTO RAWMETADATA ('
+                               'FULLPATH, '
+                               'MASTER_TC, '
+                               'REEL, '
+                               'Camera_Clip_Name, '
+                               'Sensor_FPS,'
+                               'Project_FPS,'
+                               'Master_TC_Time_Base,'
+                               'Master_TC_Frame_Count,'
+                               'Image_Width,'
+                               'Image_Height,'
+                               'Active_Image_Width,'
+                               'Active_Image_Height,'
+                               'Active_Image_Top,'
+                               'Active_Image_Left,'
+                               'Full_Image_Width,'
+                               'Full_Image_Height,'
+                               'RAWTYPE,'
+                               'END_TC'
+                               ') VALUES ('
+                               '?, ?, ?, ?, ?, ? ,?, ?, ?, ?,'
+                               '?, ?, ?, ?, ?, ? , ?, ?)',
+                               (item, tc, dpxheader[29].rstrip(), os.path.basename(item),
+                                fps, fps, fps, self.__timecodetoframe(tc, fps), dpxheader[17], dpxheader[18],
+                                dpxheader[17], dpxheader[18], 0, 0, dpxheader[17], dpxheader[18], 'dpx',
+                                tc))
+
+            cursor.close()
+            connect.commit()
+
+
+        except:
+            print('something error in sqlitedpx')
+        finally:
+            connect.close()
+
+
+
+
     def generatedb(self):
         self._allfiles = []
         self._allfiles = [os.path.join(root, singlefile) for root, subfolder, files in os.walk(self._scanpath) for
@@ -672,6 +752,7 @@ class generaterawdb(object):
         r3dlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.r3d']
         movlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mov']
         mp4list = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mp4']
+        dpxlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.dpx']
 
         if os.path.exists(self._temppath):
             shutil.rmtree(self._temppath)
@@ -681,16 +762,18 @@ class generaterawdb(object):
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4'))
+        os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx'))
 
         starttime = datetime.datetime.now()
         print(starttime)
 
         dbpath = os.path.join(os.path.expanduser('~'), 'Desktop', os.path.basename(self._scanpath) + '.db')
         self._initsqlitedb(dbpath)
-        self._sqliteari(arilist, dbpath)
-        self._sqliter3d(r3dlist, dbpath)
-        self._sqlitemov(movlist, dbpath)
-        self._sqlitemp4(mp4list, dbpath)
+        # self._sqliteari(arilist, dbpath)
+        # self._sqliter3d(r3dlist, dbpath)
+        # self._sqlitemov(movlist, dbpath)
+        # self._sqlitemp4(mp4list, dbpath)
+        self._sqlitedpx(dpxlist, dbpath)
 
         endtime = datetime.datetime.now()
         print(endtime - starttime)
@@ -698,7 +781,7 @@ class generaterawdb(object):
 
 if __name__ == '__main__':
     testclass = generaterawdb()
-    # testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
-    testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
+    testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
+    # testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
     testclass.generatedb()
     pass
