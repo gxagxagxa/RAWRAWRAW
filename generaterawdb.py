@@ -864,6 +864,89 @@ class generaterawdb(object):
             connect.close()
 
 
+    def _processexrmessage(self, exrmessage):
+        exrmetadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', 'duration': '00:00:00:00', 'creation_date': '',
+                       'creation_time': '', 'encoder': '', 'fps': '24', 'width': '', 'height': ''}
+        for line in exrmessage.split(os.linesep):
+            if 'time' in line and '(' not in line:
+                # print(line)
+                exrmetadata['MASTER_TC'] = line.split('time')[-1].lstrip().rstrip()
+            if 'dataWindow' in line:
+                # print(line)
+                exrmetadata['width'] = int(line.split(': ')[-1].split(' - ')[-1].lstrip('(').rstrip(')').split(' ')[0]) + 1
+                exrmetadata['height'] = int(line.split(': ')[-1].split(' - ')[-1].lstrip('(').rstrip(')').split(' ')[-1]) + 1
+            if 'framesPerSecond' in line:
+                # print(line)
+                exrmetadata['fps'] = line.split(': ')[-1].split('(')[-1].rstrip(')')
+            if 'compression' in line:
+                # print(line)
+                exrmetadata['encoder'] = line.split(': ')[-1].rstrip()
+
+        # print(exrmetadata)
+        return exrmetadata
+
+
+
+    def _sqliteexr(self, exrlist, dbpath):
+        connect = sqlite3.connect(dbpath)
+        try:
+            cursor = connect.cursor()
+            for index, item in enumerate(exrlist):
+                os.symlink(item,
+                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'exr', '%08d.exr' % index))
+                cmd = ['exrheader {0}'.format(
+                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'exr', '%08d.exr' % index))]
+                message = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()[0]
+                # print(message)
+                exrmetadata = self._processexrmessage(message)
+                # print(mp4metadata)
+                # print(index, item)
+
+                cursor.execute('INSERT INTO RAWMETADATA ('
+                               'FULLPATH,'
+                               'MASTER_TC,'
+                               'REEL,'
+                               'Camera_Clip_Name,'
+                               'System_Image_Creation_Date,'
+                               'System_Image_Creation_Time,'
+                               'Sensor_FPS,'
+                               'Project_FPS,'
+                               'Master_TC_Time_Base,'
+                               'Master_TC_Frame_Count,'
+                               'Recorder_Type,'
+                               'Image_Width,'
+                               'Image_Height,'
+                               'Active_Image_Width,'
+                               'Active_Image_Height,'
+                               'Active_Image_Top,'
+                               'Active_Image_Left,'
+                               'Full_Image_Width,'
+                               'Full_Image_Height,'
+                               'RAWTYPE,'
+                               'END_TC'
+                               ') VALUES ('
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
+                               '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                               (item, exrmetadata['MASTER_TC'], exrmetadata['REEL'],
+                                os.path.basename(item), exrmetadata['creation_date'],
+                                exrmetadata['creation_time'], exrmetadata['fps'], exrmetadata['fps'],
+                                exrmetadata['fps'],
+                                self.__timecodetoframe(exrmetadata['MASTER_TC'], exrmetadata['fps']),
+                                exrmetadata['encoder'],
+                                exrmetadata['width'], exrmetadata['height'],
+                                exrmetadata['width'], exrmetadata['height'], '0', '0', exrmetadata['width'],
+                                exrmetadata['height'], 'exr',
+                                exrmetadata['MASTER_TC']))
+
+            cursor.close()
+            connect.commit()
+
+        except:
+            print('something error in exr symbol link')
+        finally:
+            connect.close()
+
+
 
 
     def generatedb(self):
@@ -877,6 +960,7 @@ class generaterawdb(object):
         mp4list = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mp4']
         dpxlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.dpx']
         mxflist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mxf']
+        exrlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.exr']
 
 
         if os.path.exists(self._temppath):
@@ -889,18 +973,20 @@ class generaterawdb(object):
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf'))
+        os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'exr'))
 
         starttime = datetime.datetime.now()
         print(starttime)
 
         dbpath = os.path.join(os.path.expanduser('~'), 'Desktop', os.path.basename(self._scanpath) + '.db')
         self._initsqlitedb(dbpath)
-        self._sqliteari(arilist, dbpath)
-        self._sqliter3d(r3dlist, dbpath)
-        self._sqlitemov(movlist, dbpath)
-        self._sqlitemp4(mp4list, dbpath)
-        self._sqlitedpx(dpxlist, dbpath)
-        self._sqlitemxf(mxflist, dbpath)
+        # self._sqliteari(arilist, dbpath)
+        # self._sqliter3d(r3dlist, dbpath)
+        # self._sqlitemov(movlist, dbpath)
+        # self._sqlitemp4(mp4list, dbpath)
+        # self._sqlitedpx(dpxlist, dbpath)
+        # self._sqlitemxf(mxflist, dbpath)
+        self._sqliteexr(exrlist, dbpath)
 
         endtime = datetime.datetime.now()
         print(endtime - starttime)
