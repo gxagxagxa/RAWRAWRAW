@@ -235,6 +235,29 @@ class generaterawdb(object):
                     metadata = csv.reader(csvfile, delimiter=',')
                     for index, item in enumerate(metadata):
                         if index % 2 == 1:
+
+                            colorspace = '--'
+                            if item[30] == '2' or item[30] == '11':
+                                colorspace = 'REDspace'
+                            if item[30] == '0' or item[30] == '12':
+                                colorspace = 'CameraRGB'
+                            if item[30] == '1' or item[30] == '13':
+                                colorspace = 'rec709'
+                            if item[30] == '14':
+                                colorspace = 'REDcolor'
+                            if item[30] == '15':
+                                colorspace = 'sRGB'
+                            if item[30] == '5':
+                                colorspace = 'Adobe1998'
+                            if item[30] == '18':
+                                colorspace = 'REDcolor2'
+                            if item[30] == '19':
+                                colorspace = 'REDcolor3'
+                            if item[30] == '20':
+                                colorspace = 'DRAGONcolor'
+                            if item[30] == '21':
+                                colorspace = 'XYZ'
+
                             cursor.execute('INSERT INTO RAWMETADATA ('
                                            'FULLPATH,'
                                            'MASTER_TC,'
@@ -302,7 +325,7 @@ class generaterawdb(object):
                                             item[22],
                                             item[21], item[22],
                                             item[32],
-                                            item[34], item[30], item[70], '--', 'mm', item[68], item[67], item[66],
+                                            item[34], colorspace, item[70], '--', 'mm', item[68], item[67], item[66],
                                             item[116],
                                             'r3d', item[28]))
 
