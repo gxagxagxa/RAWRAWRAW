@@ -947,6 +947,23 @@ class generaterawdb(object):
             connect.close()
 
 
+    def _sqlitecine(self, cinelist, dbpath):
+        connect = sqlite3.connect(dbpath)
+        try:
+            cursor = connect.cursor()
+            for index, item in enumerate(cinelist):
+                os.symlink(item,
+                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index))
+
+
+            cursor.close()
+            connect.commit()
+
+        except:
+            print('something error in exr symbol link')
+        finally:
+            connect.close()
+
 
 
     def generatedb(self):
@@ -961,6 +978,7 @@ class generaterawdb(object):
         dpxlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.dpx']
         mxflist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mxf']
         exrlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.exr']
+        cinelist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.cine']
 
 
         if os.path.exists(self._temppath):
@@ -974,19 +992,21 @@ class generaterawdb(object):
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'exr'))
+        os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine'))
 
         starttime = datetime.datetime.now()
         print(starttime)
 
         dbpath = os.path.join(os.path.expanduser('~'), 'Desktop', os.path.basename(self._scanpath) + '.db')
         self._initsqlitedb(dbpath)
-        # self._sqliteari(arilist, dbpath)
-        # self._sqliter3d(r3dlist, dbpath)
-        # self._sqlitemov(movlist, dbpath)
-        # self._sqlitemp4(mp4list, dbpath)
-        # self._sqlitedpx(dpxlist, dbpath)
-        # self._sqlitemxf(mxflist, dbpath)
+        self._sqliteari(arilist, dbpath)
+        self._sqliter3d(r3dlist, dbpath)
+        self._sqlitemov(movlist, dbpath)
+        self._sqlitemp4(mp4list, dbpath)
+        self._sqlitedpx(dpxlist, dbpath)
+        self._sqlitemxf(mxflist, dbpath)
         self._sqliteexr(exrlist, dbpath)
+        self._sqlitecine(cinelist, dbpath)
 
         endtime = datetime.datetime.now()
         print(endtime - starttime)
