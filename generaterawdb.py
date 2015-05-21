@@ -178,7 +178,7 @@ class generaterawdb(object):
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                            (arilist[index - 1], item[1], item[2], item[3], item[4], item[5], item[6],
-                                            item[7], item[8], item[9], item[10], item[11], item[12], item[13], item[14],
+                                            item[7], item[8], item[9], item[10], item[11], item[12], item[13], item[14].split('.')[0],
                                             item[15], item[16], item[17], item[18], item[19], item[20], item[21],
                                             item[22],
                                             item[23], item[24], item[25], item[26], item[27], item[28], item[29],
@@ -316,7 +316,7 @@ class generaterawdb(object):
                                             os.path.basename(r3dlist[index / 2 - 1])[:15],
                                             item[77], item[79], item[84], item[83],
                                             item[81], item[86], '--', item[82], item[85],
-                                            os.path.basename(r3dlist[index / 2 - 1]),
+                                            os.path.basename(r3dlist[index / 2 - 1]).split('.')[0],
                                             item[9], item[10], item[10], item[6], item[55], item[7], item[7],
                                             item[13],
                                             item[19], item[52] + ' ms', item[54], 'N/A', item[24], item[23], item[24],
@@ -577,7 +577,7 @@ class generaterawdb(object):
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                (movlist[index], movmetadata['MASTER_TC'], movmetadata['REEL'],
-                                os.path.basename(movlist[index]), movmetadata['creation_date'],
+                                os.path.basename(movlist[index]).split('.')[0], movmetadata['creation_date'],
                                 movmetadata['creation_time'], movmetadata['fps'], movmetadata['fps'],
                                 movmetadata['fps'],
                                 self.__timecodetoframe(movmetadata['MASTER_TC'], movmetadata['fps']),
@@ -667,7 +667,7 @@ class generaterawdb(object):
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                (mp4list[index], mp4metadata['MASTER_TC'], mp4metadata['REEL'],
-                                os.path.basename(mp4list[index]), mp4metadata['creation_date'],
+                                os.path.basename(mp4list[index]).split('.')[0], mp4metadata['creation_date'],
                                 mp4metadata['creation_time'], mp4metadata['fps'], mp4metadata['fps'],
                                 mp4metadata['fps'],
                                 self.__timecodetoframe(mp4metadata['MASTER_TC'], mp4metadata['fps']),
@@ -758,7 +758,7 @@ class generaterawdb(object):
                                ') VALUES ('
                                '?, ?, ?, ?, ?, ? ,?, ?, ?, ?,'
                                '?, ?, ?, ?, ?, ? , ?, ?)',
-                               (item, tc, reel, os.path.basename(item),
+                               (item, tc, reel, os.path.basename(item).split('.')[0],
                                 fps, fps, fps, self.__timecodetoframe(tc, fps), dpxheader[17], dpxheader[18],
                                 dpxheader[17], dpxheader[18], 0, 0, dpxheader[17], dpxheader[18], 'dpx',
                                 tc))
@@ -844,7 +844,7 @@ class generaterawdb(object):
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                (item, mxfmetadata['MASTER_TC'], mxfmetadata['REEL'],
-                                os.path.basename(item), mxfmetadata['creation_date'],
+                                os.path.basename(item).split('.')[0], mxfmetadata['creation_date'],
                                 mxfmetadata['creation_time'], mxfmetadata['fps'], mxfmetadata['fps'],
                                 mxfmetadata['fps'],
                                 self.__timecodetoframe(mxfmetadata['MASTER_TC'], mxfmetadata['fps']),
@@ -928,7 +928,7 @@ class generaterawdb(object):
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                (item, exrmetadata['MASTER_TC'], exrmetadata['REEL'],
-                                os.path.basename(item), exrmetadata['creation_date'],
+                                os.path.basename(item).split('.')[0], exrmetadata['creation_date'],
                                 exrmetadata['creation_time'], exrmetadata['fps'], exrmetadata['fps'],
                                 exrmetadata['fps'],
                                 self.__timecodetoframe(exrmetadata['MASTER_TC'], exrmetadata['fps']),
@@ -1014,7 +1014,7 @@ class generaterawdb(object):
 
 if __name__ == '__main__':
     testclass = generaterawdb()
-    testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
+    testclass._scanpath = r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416/Original'
     # testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
     testclass.generatedb()
     pass
