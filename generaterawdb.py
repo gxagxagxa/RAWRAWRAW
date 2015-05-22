@@ -955,27 +955,6 @@ class generaterawdb(object):
                 os.symlink(item,
                            os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index))
 
-                # with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index),
-                #           'rb') as cinefile:
-                #     cinefile.seek(0)
-                #     cineheader = struct.unpack('<2s H H H i I i I I I I II'  # main header, 44 bytes
-                #                                'I i i H H I I i i I I'  # BITMAPINFOHEADER 40 bytes
-                #                                'H H H H H H H 5B c'
-                #                                '120s'
-                #                                '2s H H H h b 96s' #323
-                #                                'H h B B 8s 8f 44s' #417
-                #                                '88s i I H H H H' #787
-                #                                '260s H' #787
-                #                                '34s'
-                #                                'H H H 4s i'  # 821
-                #                                'b I i i I I I I'
-                #                                'I I i I I I i I i i i I' #912
-                #                                'I I 16s 8f i 2f I I I i i 28s' #208
-                #                                '600I',
-                #
-                #
-                #                                cinefile.read(912+116+2400))
-
                 with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index),
                           'rb') as cinefile:
                     cinefile.seek(0)
