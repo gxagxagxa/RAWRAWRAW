@@ -693,7 +693,7 @@ class generaterawdb(object):
         try:
             cursor = connect.cursor()
             for index, item in enumerate(dpxlist):
-                os.symlink(item,
+                os6.symlink(item,
                            os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index))
                 dpxheader = ()
                 with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index),
@@ -955,7 +955,60 @@ class generaterawdb(object):
                 os.symlink(item,
                            os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index))
 
+                # with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index),
+                #           'rb') as cinefile:
+                #     cinefile.seek(0)
+                #     cineheader = struct.unpack('<2s H H H i I i I I I I II'  # main header, 44 bytes
+                #                                'I i i H H I I i i I I'  # BITMAPINFOHEADER 40 bytes
+                #                                'H H H H H H H 5B c'
+                #                                '120s'
+                #                                '2s H H H h b 96s' #323
+                #                                'H h B B 8s 8f 44s' #417
+                #                                '88s i I H H H H' #787
+                #                                '260s H' #787
+                #                                '34s'
+                #                                'H H H 4s i'  # 821
+                #                                'b I i i I I I I'
+                #                                'I I i I I I i I i i i I' #912
+                #                                'I I 16s 8f i 2f I I I i i 28s' #208
+                #                                '600I',
+                #
+                #
+                #                                cinefile.read(912+116+2400))
 
+                with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index),
+                          'rb') as cinefile:
+                    cinefile.seek(0)
+                    cineheader = struct.unpack('<2s 3H i I i 4I 2I'
+                                               'I i i H H I I i i I I'
+                                               '70H'
+                                               '2s'
+                                               '4h b 88s'
+                                               '6s '
+                                               '8h 8f 48s'
+                                               '88s i I 2H 260s'
+                                               'H 2B H 2d H 2i'
+                                               'i 3H 4s i B 7I'
+                                               '2I i 3I i I 3i I'
+                                               '2I 4I 8f i 2f 3I 2i 50i'
+                                               '16i 16I 16I i 64f',  # main header, 44 bytes
+                                               cinefile.read(44
+                                                             +40
+                                                             +140
+                                                             +2
+                                                             +(8+1+88)
+                                                             +6
+                                                             +(16+32+48)
+                                                             +(88+8+4+260)
+                                                             +(2+2+2+16+2+8)
+                                                             +(4+6 +4+4+1+28)
+                                                             +(48)
+                                                             +(8+16+32+4+8+12+8 + 200)
+                                                             +(64+64+64+4+256)))
+
+                    for index, item in enumerate(cineheader):
+                        print(index, item)
+                break
             cursor.close()
             connect.commit()
 
@@ -999,13 +1052,13 @@ class generaterawdb(object):
 
         dbpath = os.path.join(os.path.expanduser('~'), 'Desktop', os.path.basename(self._scanpath) + '.db')
         self._initsqlitedb(dbpath)
-        self._sqliteari(arilist, dbpath)
-        self._sqliter3d(r3dlist, dbpath)
-        self._sqlitemov(movlist, dbpath)
-        self._sqlitemp4(mp4list, dbpath)
-        self._sqlitedpx(dpxlist, dbpath)
-        self._sqlitemxf(mxflist, dbpath)
-        self._sqliteexr(exrlist, dbpath)
+        # self._sqliteari(arilist, dbpath)
+        # self._sqliter3d(r3dlist, dbpath)
+        # self._sqlitemov(movlist, dbpath)
+        # self._sqlitemp4(mp4list, dbpath)
+        # self._sqlitedpx(dpxlist, dbpath)
+        # self._sqlitemxf(mxflist, dbpath)
+        # self._sqliteexr(exrlist, dbpath)
         self._sqlitecine(cinelist, dbpath)
 
         endtime = datetime.datetime.now()
@@ -1014,7 +1067,8 @@ class generaterawdb(object):
 
 if __name__ == '__main__':
     testclass = generaterawdb()
-    testclass._scanpath = r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416/Original'
+    # testclass._scanpath = r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416/Original'
+    testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
     # testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
     testclass.generatedb()
     pass

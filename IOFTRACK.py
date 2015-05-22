@@ -210,7 +210,7 @@ class IOFTRACK(object):
 
     def conformdb(self, dbpath):
         connect = sqlite3.connect(dbpath)
-        #
+
         try:
             cursor = connect.cursor()
             for index, item in enumerate(self._cliplist):
@@ -223,7 +223,7 @@ class IOFTRACK(object):
                     cursor.execute(cmd)
                     values = cursor.fetchall()
                     # print(values[0])
-                    if values is not None and len(values[0]) > 0:
+                    if values is not None and len(values) > 0:
                         singlefile['FULLPATH'] = values[0][0]
                         singlefile['SCENE'] = values[0][3]
                         singlefile['TAKE'] = values[0][4]
@@ -424,6 +424,7 @@ if __name__ == '__main__':
     testclass.readvfxshotlist(
         r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416/Deliverable/template copy.xls')
     testclass.conformdb(r'/Users/mac/Desktop/Original.db')
+    # testclass.conformdb(r'/Users/mac/Desktop/~Footage.db')
     # testclass.renametoVFX()
     testclass.updateftrackshotinfo()
 
