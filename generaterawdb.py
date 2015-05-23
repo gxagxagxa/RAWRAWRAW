@@ -12,6 +12,7 @@ import shutil
 import sqlite3
 import struct
 import re
+import time
 
 APP_PATH = os.path.realpath(sys.path[0])
 
@@ -27,7 +28,6 @@ class generaterawdb(object):
     def choosescanpath(self):
         pass
 
-
     def _symbolari(self, arilist):
         for index, item in enumerate(arilist):
             try:
@@ -38,7 +38,6 @@ class generaterawdb(object):
         cmd = 'ARRIMetaExtract_CMD -i {0} -s \",\" -o {0}'.format(
             os.path.join(self._temppath, os.path.basename(self._scanpath), 'ari'))
         subprocess.call(cmd, shell=True)
-
 
     def _sqliteari(self, arilist, dbpath):
         self._symbolari(arilist)
@@ -178,7 +177,8 @@ class generaterawdb(object):
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                            (arilist[index - 1], item[1], item[2], item[3], item[4], item[5], item[6],
-                                            item[7], item[8], item[9], item[10], item[11], item[12], item[13], item[14].split('.')[0],
+                                            item[7], item[8], item[9], item[10], item[11], item[12], item[13],
+                                            item[14].split('.')[0],
                                             item[15], item[16], item[17], item[18], item[19], item[20], item[21],
                                             item[22],
                                             item[23], item[24], item[25], item[26], item[27], item[28], item[29],
@@ -202,7 +202,7 @@ class generaterawdb(object):
                                             item[102],
                                             item[103], item[104], item[105], item[106], item[107], item[108], item[109],
                                             item[110], item[111],
-                                            'ari', item[1]))
+                                            'ari', self.__timecodeadd(item[1], '00:00:00:01', item[31])))
                     cursor.close()
                     connect.commit()
         except:
@@ -211,8 +211,8 @@ class generaterawdb(object):
         finally:
             connect.close()
 
-
     def _sqliter3d(self, r3dlist, dbpath):
+        print('====  doing RED  ====')
         r3dscv = os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D', 'R3D_metadata_output.csv')
         # print(r3dscv)
         for index, item in enumerate(r3dlist):
@@ -295,6 +295,10 @@ class generaterawdb(object):
                                            'Image_Height,'
                                            'Active_Image_Width,'
                                            'Active_Image_Height,'
+                                           'Active_Image_Top,'
+                                           'Active_Image_Left,'
+                                           'Full_Image_Width,'
+                                           'Full_Image_Height,'
                                            'White_Balance,'
                                            'Exposure_Index_ASA,'
                                            'Target_Color_Space,'
@@ -311,7 +315,7 @@ class generaterawdb(object):
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
                                            '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
-                                           '?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                           '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                                            (r3dlist[index / 2 - 1], item[26],
                                             os.path.basename(r3dlist[index / 2 - 1])[:15],
                                             item[77], item[79], item[84], item[83],
@@ -321,9 +325,9 @@ class generaterawdb(object):
                                             item[13],
                                             item[19], item[52] + ' ms', item[54], 'N/A', item[24], item[23], item[24],
                                             self.__timecodetoframe(item[26], item[24]),
-                                            item[12], '--', item[117], item[21],
+                                            item[12].rstrip(), '--', item[117], item[21],
                                             item[22],
-                                            item[21], item[22],
+                                            item[21], item[22], 0, 0, item[21], item[22],
                                             item[32],
                                             item[34], colorspace, item[70], '--', 'mm', item[68], item[67], item[66],
                                             item[116],
@@ -336,7 +340,6 @@ class generaterawdb(object):
             print('something error in sqliter3d method')
         finally:
             connect.close()
-
 
     def _initsqlitedb(self, dbpath):
         connect = sqlite3.connect(dbpath)
@@ -465,7 +468,6 @@ class generaterawdb(object):
         finally:
             connect.close()
 
-
     def _processmovmetadata(self, movmessage):
         movmetadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', 'duration': '00:00:00:00', 'creation_date': '',
                        'creation_time': '', 'encoder': '', 'fps': '24', 'width': '', 'height': ''}
@@ -494,7 +496,6 @@ class generaterawdb(object):
                 movmetadata['height'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[1]
         return movmetadata
 
-
     def __timecodetoframe(self, timecode, fps):
         # print('==== __timecodetoframe  ====')
         ffps = float(fps)
@@ -511,7 +512,6 @@ class generaterawdb(object):
         # print(framecount)
         return framecount
 
-
     def __frametotimecode(self, frame, fps):
         # print('==== __frametotimecode  ====')
         ffps = float(fps)
@@ -526,7 +526,6 @@ class generaterawdb(object):
         # print(tcstring)
         return tcstring
 
-
     def __timecodeadd(self, tc1, tc2, fps):
         # print('==== __timecodeadd  ====')
         frame1 = self.__timecodetoframe(tc1, fps)
@@ -535,8 +534,9 @@ class generaterawdb(object):
         frame2 = frame1 + frame2
         return self.__frametotimecode(frame2, fps)
 
-
     def _sqlitemov(self, movlist, dbpath):
+        print('====  doing mov  ====')
+
         connect = sqlite3.connect(dbpath)
         try:
             cursor = connect.cursor()
@@ -596,7 +596,6 @@ class generaterawdb(object):
         finally:
             connect.close()
 
-
     def _processmp4metadata(self, mp4message):
         mp4metadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', 'duration': '00:00:00:00', 'creation_date': '',
                        'creation_time': '', 'encoder': '', 'fps': '24', 'width': '', 'height': ''}
@@ -625,8 +624,9 @@ class generaterawdb(object):
                 mp4metadata['height'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[1]
         return mp4metadata
 
-
     def _sqlitemp4(self, mp4list, dbpath):
+        print('====  doing mp4  ====')
+
         connect = sqlite3.connect(dbpath)
         try:
             cursor = connect.cursor()
@@ -686,14 +686,14 @@ class generaterawdb(object):
         finally:
             connect.close()
 
-
     def _sqlitedpx(self, dpxlist, dbpath):
-        # print('==== _sqlitedpx  ====')
+        print('====  doing dpx  ====')
+
         connect = sqlite3.connect(dbpath)
         try:
             cursor = connect.cursor()
             for index, item in enumerate(dpxlist):
-                os6.symlink(item,
+                os.symlink(item,
                            os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index))
                 dpxheader = ()
                 with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index),
@@ -722,7 +722,7 @@ class generaterawdb(object):
                         # for sss, kkk in enumerate(dpxheader):
                         # print(sss, kkk)
                 tc = ('%02x' % dpxheader[52]) + ':' + ('%02x' % dpxheader[53]) + ':' + (
-                '%02x' % dpxheader[54]) + ':' + ('%02x' % dpxheader[55])
+                    '%02x' % dpxheader[54]) + ':' + ('%02x' % dpxheader[55])
                 if dpxheader[52] > 23 or dpxheader[52] < 0:
                     tc = '00:00:00:00'
                 # print(tc)
@@ -731,8 +731,8 @@ class generaterawdb(object):
                 if float(fps) <= 0:
                     fps = '24'
 
-                reel =re.sub(r'\W', '', dpxheader[29])
-                if(len(reel)) == 0:
+                reel = re.sub(r'\W', '', dpxheader[29])
+                if (len(reel)) == 0:
                     reel = '--'
                 # print(reel)
 
@@ -761,7 +761,7 @@ class generaterawdb(object):
                                (item, tc, reel, os.path.basename(item).split('.')[0],
                                 fps, fps, fps, self.__timecodetoframe(tc, fps), dpxheader[17], dpxheader[18],
                                 dpxheader[17], dpxheader[18], 0, 0, dpxheader[17], dpxheader[18], 'dpx',
-                                tc))
+                                self.__timecodeadd(tc, '00:00:00:01', fps)))
 
             cursor.close()
             connect.commit()
@@ -772,10 +772,10 @@ class generaterawdb(object):
         finally:
             connect.close()
 
-
     def _processmxfmetadata(self, mxfmessage):
         mxfmetadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', 'duration': '00:00:00:00', 'creation_date': '',
                        'creation_time': '', 'encoder': '', 'fps': '24', 'width': '', 'height': ''}
+        resolution = re.compile(r'\d*[x]\d*')
         for index, line in enumerate(mxfmessage.split(os.linesep)):
             # print(index, line)
             if 'Duration' in line:
@@ -794,16 +794,22 @@ class generaterawdb(object):
             if 'timecode' in line:
                 # print(line.split(' : ')[-1].lstrip().rstrip())
                 mxfmetadata['MASTER_TC'] = line.split(' : ')[-1].lstrip().rstrip()
-            if 'Stream' in line and 'Video' in line and 'fps' in line:
+            if 'Stream' in line and 'Video' in line and 'tbr' in line:
                 # print(line.split(',')[4].lstrip().rstrip().split(' ')[0])
                 mxfmetadata['fps'] = line.split('tbr')[0].lstrip().rstrip().split(',')[-1].lstrip().rstrip()
-                mxfmetadata['width'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[0]
-                mxfmetadata['height'] = line.split(',')[2].lstrip().rstrip().split(' ')[0].split('x')[1]
+                match = resolution.findall(line)
+                if match is not None and len(match) > 0:
+                    mxfmetadata['width'] = match[0].split('x')[0]
+                    mxfmetadata['height'] = match[0].split('x')[1]
+                else:
+                    mxfmetadata['width'] = 1
+                    mxfmetadata['height'] = 1
         # print(mxfmetadata)
         return mxfmetadata
 
-
     def _sqlitemxf(self, mxflist, dbpath):
+        print('====  doing mxf  ====')
+
         connect = sqlite3.connect(dbpath)
         try:
             cursor = connect.cursor()
@@ -815,7 +821,7 @@ class generaterawdb(object):
                 message = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()[1]
 
                 mxfmetadata = self._processmxfmetadata(message)
-                # print(mp4metadata)
+                # print(mxfmetadata)
                 # print(index, item)
 
                 cursor.execute('INSERT INTO RAWMETADATA ('
@@ -863,7 +869,6 @@ class generaterawdb(object):
         finally:
             connect.close()
 
-
     def _processexrmessage(self, exrmessage):
         exrmetadata = {'MASTER_TC': '00:00:00:00', 'REEL': '--', 'duration': '00:00:00:00', 'creation_date': '',
                        'creation_time': '', 'encoder': '', 'fps': '24', 'width': '', 'height': ''}
@@ -873,8 +878,10 @@ class generaterawdb(object):
                 exrmetadata['MASTER_TC'] = line.split('time')[-1].lstrip().rstrip()
             if 'dataWindow' in line:
                 # print(line)
-                exrmetadata['width'] = int(line.split(': ')[-1].split(' - ')[-1].lstrip('(').rstrip(')').split(' ')[0]) + 1
-                exrmetadata['height'] = int(line.split(': ')[-1].split(' - ')[-1].lstrip('(').rstrip(')').split(' ')[-1]) + 1
+                exrmetadata['width'] = int(
+                    line.split(': ')[-1].split(' - ')[-1].lstrip('(').rstrip(')').split(' ')[0]) + 1
+                exrmetadata['height'] = int(
+                    line.split(': ')[-1].split(' - ')[-1].lstrip('(').rstrip(')').split(' ')[-1]) + 1
             if 'framesPerSecond' in line:
                 # print(line)
                 exrmetadata['fps'] = line.split(': ')[-1].split('(')[-1].rstrip(')')
@@ -885,9 +892,9 @@ class generaterawdb(object):
         # print(exrmetadata)
         return exrmetadata
 
-
-
     def _sqliteexr(self, exrlist, dbpath):
+        print('====  doing EXR  ====')
+
         connect = sqlite3.connect(dbpath)
         try:
             cursor = connect.cursor()
@@ -936,7 +943,7 @@ class generaterawdb(object):
                                 exrmetadata['width'], exrmetadata['height'],
                                 exrmetadata['width'], exrmetadata['height'], '0', '0', exrmetadata['width'],
                                 exrmetadata['height'], 'exr',
-                                exrmetadata['MASTER_TC']))
+                                self.__timecodeadd(exrmetadata['MASTER_TC'], '00:00:00:01', exrmetadata['fps'])))
 
             cursor.close()
             connect.commit()
@@ -946,8 +953,15 @@ class generaterawdb(object):
         finally:
             connect.close()
 
+    def __calculatephantomtimecode(self, seconds, fps):
+        # print(seconds)
+        tc = time.strftime('%H:%M:%S:', time.localtime(int(seconds)))
+        tc = tc + '%02d' % int((seconds - int(seconds)) * fps)
+        # print(tc)
+        return tc
 
     def _sqlitecine(self, cinelist, dbpath):
+        print('====  doing cine  ====')
         connect = sqlite3.connect(dbpath)
         try:
             cursor = connect.cursor()
@@ -970,33 +984,211 @@ class generaterawdb(object):
                                                'i 3H 4s i B 7I'
                                                '2I i 3I i I 3i I'
                                                '2I 4I 8f i 2f 3I 2i 50i'
-                                               '16i 16I 16I i 64f',  # main header, 44 bytes
+                                               '16i 16I 16I i 64f'
+                                               ,  # main header, 44 bytes
                                                cinefile.read(44
-                                                             +40
-                                                             +140
-                                                             +2
-                                                             +(8+1+88)
-                                                             +6
-                                                             +(16+32+48)
-                                                             +(88+8+4+260)
-                                                             +(2+2+2+16+2+8)
-                                                             +(4+6 +4+4+1+28)
-                                                             +(48)
-                                                             +(8+16+32+4+8+12+8 + 200)
-                                                             +(64+64+64+4+256)))
+                                                             + 40
+                                                             + 140
+                                                             + 2
+                                                             + (8 + 1 + 88)
+                                                             + 6
+                                                             + (16 + 32 + 48)
+                                                             + (88 + 8 + 4 + 260)
+                                                             + (2 + 2 + 2 + 16 + 2 + 8)
+                                                             + (4 + 6 + 4 + 4 + 1 + 28)
+                                                             + (48)
+                                                             + (8 + 16 + 32 + 4 + 8 + 12 + 8 + 200)
+                                                             + (64 + 64 + 64 + 4 + 256)
+                                                             ))
+                    #
+                    # for index, item4 in enumerate(cineheader):
+                    #     print(index, item4)
 
-                    for index, item in enumerate(cineheader):
-                        print(index, item)
-                break
+                    fps = cineheader[24]
+                    if fps > 30:
+                        fps = 24
+
+                    seconds = (cineheader[12] + (float(cineheader[11]) / (2 ** 32)) + cineheader[6] / float(fps))
+                    tc = self.__calculatephantomtimecode(seconds, float(fps))
+                    seconds = (cineheader[12] +
+                               (float(cineheader[11]) / (2 ** 32)) +
+                               cineheader[6] / float(fps) +
+                               cineheader[7] / float(fps))
+                    endtc = self.__calculatephantomtimecode(seconds, float(fps))
+
+                    cursor.execute('INSERT INTO RAWMETADATA ('
+                                   'FULLPATH, '
+                                   'MASTER_TC, '
+                                   'REEL, '
+                                   'Camera_Clip_Name,'
+                                   'Exposure_Time,'
+                                   'Sensor_FPS,'
+                                   'Project_FPS,'
+                                   'Master_TC_Time_Base,'
+                                   'Master_TC_Frame_Count,'
+                                   'Image_Width,'
+                                   'Image_Height,'
+                                   'Active_Image_Width,'
+                                   'Active_Image_Height,'
+                                   'Active_Image_Top,'
+                                   'Active_Image_Left,'
+                                   'Full_Image_Width,'
+                                   'Full_Image_Height,'
+                                   'RAWTYPE,'
+                                   'END_TC'
+                                   ') VALUES ('
+                                   '?, ?, ?, ?, ?, ? ,?, ?, ?, ?,'
+                                   '?, ?, ?, ?, ?, ? , ?, ?, ?)',
+                                   (item, tc, '--', os.path.basename(item).split('.')[0],
+                                    str(cineheader[25] / 1000.0) + ' ms',
+                                    cineheader[24], fps, fps, self.__timecodetoframe(tc, 24), cineheader[14],
+                                    cineheader[15],
+                                    cineheader[135], cineheader[136], 0, 0, cineheader[14], cineheader[15], 'cine',
+                                    endtc))
+
             cursor.close()
             connect.commit()
 
         except:
-            print('something error in exr symbol link')
+            print('something error in cine symbol link')
         finally:
             connect.close()
 
+    def _sqlitedng(self, dnglist, dbpath):
+        print('====  doing dng  ====')
 
+        connect = sqlite3.connect(dbpath)
+        try:
+            cursor = connect.cursor()
+            for index, item in enumerate(dnglist):
+                os.symlink(item,
+                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'dng', '%08d.dng' % index))
+
+                with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dng', '%08d.dng' % index),
+                          'rb') as dngfile:
+                    dngmetadata = {'MASTER_TC': '00:00:00:00',
+                                   'REEL': '--',
+                                   'width': '',
+                                   'height': '',
+                                   'bitdepth': '',
+                                   'camera': '',
+                                   'activewidth': '',
+                                   'activeheight': '',
+                                   'fps': 24,
+                                   'cameraSN': ''}
+                    dngfile.seek(0)
+
+                    startid = struct.unpack('<4s I',
+                                            dngfile.read(4 + 4))
+                    dngfile.seek(startid[1])
+                    idnumbers = struct.unpack('<H', dngfile.read(2))
+
+                    for index in xrange(idnumbers[0]):
+                        dngfile.seek(startid[1] + 2 + 12 * index)
+                        tempID = struct.unpack('<H H 2I', dngfile.read(12))
+                        # print(index, tempID)
+                        if tempID[0] == 254:
+                            pass  # subfile format
+
+                        if tempID[0] == 256:  # image width
+                            dngmetadata['width'] = tempID[3]
+
+                        if tempID[0] == 257:  # image height
+                            dngmetadata['height'] = tempID[3]
+
+                        if tempID[0] == 258:  # bit per smaple
+                            dngmetadata['bitdepth'] = tempID[3]
+
+                        if tempID[0] == 50708:  # camera model
+                            dngfile.seek(tempID[3])
+                            fmtstring = '<%ds' % tempID[2]
+                            cameramodel = struct.unpack(fmtstring,
+                                                        dngfile.read(tempID[2]))
+                            dngmetadata['camera'] = re.sub(r'\W', '', cameramodel[0])
+
+                        if tempID[0] == 50720:  # crop size
+                            intnumber = struct.pack('<I', tempID[3])
+                            shortnumber = struct.unpack('<2H', intnumber)
+                            dngmetadata['activewidth'] = shortnumber[0]
+                            dngmetadata['activeheight'] = shortnumber[1]
+
+                        if tempID[0] == 50735:  # camera SN
+                            dngfile.seek(tempID[3])
+                            fmtstring = '<%ds' % tempID[2]
+                            cameramodel = struct.unpack(fmtstring,
+                                                        dngfile.read(tempID[2]))
+                            dngmetadata['cameraSN'] = re.sub(r'\W', '', cameramodel[0])
+
+                        if tempID[0] == 51043:  # timecode
+                            dngfile.seek(tempID[3])
+                            tc = struct.unpack('<4b', dngfile.read(4))
+                            dngmetadata['MASTER_TC'] = ('%02x' % tc[3]) + ':' + \
+                                                       ('%02x' % tc[2]) + ':' + \
+                                                       ('%02x' % tc[1]) + ':' + \
+                                                       ('%02x' % tc[0])
+
+                        if tempID[0] == 51044:  # fps
+                            dngfile.seek(tempID[3])
+                            fmtstring = '<%di' % (tempID[2] * 2)
+                            fps = struct.unpack(fmtstring, dngfile.read(8 * tempID[2]))
+                            # print(fps)
+                            if fps[1] == 0:
+                                # print('zero fenmu')
+                                fenzi = struct.pack('<i', fps[0])
+                                # print(struct.unpack('<4b', fenzi)[0])
+                                dngmetadata['fps'] = abs(struct.unpack('<4b', fenzi)[0])
+                            else:
+                                dngmetadata['fps'] = '%.3f' % (float(fps[0]) / fps[1])
+
+                    # print(dngmetadata)
+
+                    cursor.execute('INSERT INTO RAWMETADATA ('
+                                   'FULLPATH, '
+                                   'MASTER_TC, '
+                                   'REEL, '
+                                   'Camera_Clip_Name, '
+                                   'Camera_ID, '
+                                   'Camera_Model,'
+                                   'Sensor_FPS,'
+                                   'Project_FPS,'
+                                   'Master_TC_Time_Base,'
+                                   'Master_TC_Frame_Count,'
+                                   'Image_Width,'
+                                   'Image_Height,'
+                                   'Active_Image_Width,'
+                                   'Active_Image_Height,'
+                                   'Active_Image_Top,'
+                                   'Active_Image_Left,'
+                                   'Full_Image_Width,'
+                                   'Full_Image_Height,'
+                                   'RAWTYPE,'
+                                   'END_TC'
+                                   ') VALUES ('
+                                   '?, ?, ?, ?, ?, ? ,?, ?, ?, ?,'
+                                   '?, ?, ?, ?, ?, ? , ?, ?, ?, ?)',
+                                   (item, dngmetadata['MASTER_TC'], dngmetadata['REEL'],
+                                    os.path.basename(item).split('.')[0],
+                                    dngmetadata['cameraSN'], dngmetadata['camera'],
+                                    dngmetadata['fps'], dngmetadata['fps'], dngmetadata['fps'],
+                                    self.__timecodetoframe(dngmetadata['MASTER_TC'], dngmetadata['fps']),
+                                    dngmetadata['width'], dngmetadata['height'],
+                                    dngmetadata['activewidth'], dngmetadata['activeheight'], 0, 0,
+                                    dngmetadata['width'], dngmetadata['height'], 'dng',
+                                    self.__timecodeadd(dngmetadata['MASTER_TC'], '00:00:00:01', dngmetadata['fps'])))
+
+
+
+                    # for index, item in enumerate(dngmetadata):
+                    #     print(index, item)
+
+            cursor.close()
+            connect.commit()
+
+        except:
+            print('something error in _sqlitedng')
+
+        finally:
+            connect.close()
 
     def generatedb(self):
         self._allfiles = []
@@ -1011,7 +1203,7 @@ class generaterawdb(object):
         mxflist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.mxf']
         exrlist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.exr']
         cinelist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.cine']
-
+        dnglist = [item for item in self._allfiles if os.path.splitext(item)[-1].lower() == '.dng']
 
         if os.path.exists(self._temppath):
             shutil.rmtree(self._temppath)
@@ -1025,20 +1217,22 @@ class generaterawdb(object):
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'exr'))
         os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine'))
+        os.mkdir(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dng'))
 
         starttime = datetime.datetime.now()
         print(starttime)
 
         dbpath = os.path.join(os.path.expanduser('~'), 'Desktop', os.path.basename(self._scanpath) + '.db')
         self._initsqlitedb(dbpath)
-        # self._sqliteari(arilist, dbpath)
-        # self._sqliter3d(r3dlist, dbpath)
-        # self._sqlitemov(movlist, dbpath)
-        # self._sqlitemp4(mp4list, dbpath)
-        # self._sqlitedpx(dpxlist, dbpath)
-        # self._sqlitemxf(mxflist, dbpath)
-        # self._sqliteexr(exrlist, dbpath)
+        self._sqliteari(arilist, dbpath)
+        self._sqliter3d(r3dlist, dbpath)
+        self._sqlitemov(movlist, dbpath)
+        self._sqlitemp4(mp4list, dbpath)
+        self._sqlitedpx(dpxlist, dbpath)
+        self._sqlitemxf(mxflist, dbpath)
+        self._sqliteexr(exrlist, dbpath)
         self._sqlitecine(cinelist, dbpath)
+        self._sqlitedng(dnglist, dbpath)
 
         endtime = datetime.datetime.now()
         print(endtime - starttime)
@@ -1046,8 +1240,8 @@ class generaterawdb(object):
 
 if __name__ == '__main__':
     testclass = generaterawdb()
-    # testclass._scanpath = r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416/Original'
-    testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
+    testclass._scanpath = r'/Volumes/VIP_DATA/TEST_Footage'
+    # testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
     # testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
     testclass.generatedb()
     pass
