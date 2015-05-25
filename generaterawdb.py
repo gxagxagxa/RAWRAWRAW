@@ -1240,8 +1240,8 @@ class generaterawdb(object):
 
 if __name__ == '__main__':
     testclass = generaterawdb()
-    testclass._scanpath = r'/Volumes/VIP_DATA/TEST_Footage'
-    # testclass._scanpath = r'/Volumes/work/TEST_Footage/~Footage'
+    # testclass._scanpath = r'/Volumes/VIP_DATA/TEST_Footage'
+    testclass._scanpath = r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416 copy/Original'
     # testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
     testclass.generatedb()
     pass

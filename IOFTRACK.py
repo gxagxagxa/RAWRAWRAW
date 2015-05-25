@@ -346,6 +346,73 @@ class IOFTRACK(object):
         finally:
             connect.close()
 
+
+    def savestatus(self, savepath):
+        print('==== save status ====')
+
+        rootnode = ET.Element('IOFTRACK')
+        rootnode.set('Version', '1.0')
+        clipnodes = ET.SubElement(rootnode, 'clips')
+        for index, item in enumerate(self._cliplist):
+            itemnode = ET.SubElement(clipnodes, 'item')
+            ET.SubElement(itemnode, 'sequence').text = item['sequence'][0]
+            ET.SubElement(itemnode, 'shot').text = item['shot'][0]
+            ET.SubElement(itemnode, 'startframe').text = str(item['startframe'])
+            ET.SubElement(itemnode, 'endframe').text = str(item['endframe'])
+            ET.SubElement(itemnode, 's3d').text = item['s3d']
+            metadatanode = ET.SubElement(itemnode, 'metadata')
+
+            for frame in item['metadata']:
+                framenode = ET.SubElement(metadatanode, 'frame')
+                for key in frame.keys():
+                    ET.SubElement(framenode, key).text = str(frame[key])
+
+        roughstring = ET.tostring(rootnode, encoding='utf-8')
+        # print(roughstring)
+        prettystring = MINIDOM.parseString(roughstring)
+        prettyxml = prettystring.toprettyxml(indent='\t', encoding='utf-8')
+
+        with open(savepath, 'w') as f:
+            f.write(prettyxml)
+
+
+    def loadstatus(self, readpath):
+        print('==== read status ====')
+        statusxml = ET.parse(readpath)
+        if statusxml:
+            self._cliplist = []
+            rootnode = statusxml.getroot()
+
+            for itemnode in rootnode.findall('./clips/item'):
+                singleclip = {
+                    'startframe':'',
+                    'endframe': '',
+                    'metadata': [],
+                    'sequence': [],
+                    'shot': [],
+                    's3d': ''}
+                singleclip['sequence'].append(itemnode.find('./sequence').text)
+                singleclip['shot'].append(itemnode.find('./shot').text)
+                singleclip['s3d'] = itemnode.find('./s3d').text
+                singleclip['startframe'] = itemnode.find('./startframe').text
+                singleclip['endframe'] = itemnode.find('./endframe').text
+                metadatanode = itemnode.find('./metadata')
+
+                for node in metadatanode.findall('./*'):
+                    metadatakey = {}
+                    for key in node.findall('./*'):
+                        metadatakey[key.tag] = key.text
+                    # print(metadatakey)
+                    singleclip['metadata'].append(metadatakey)
+
+
+                self._cliplist.append(singleclip)
+
+        # print(self._cliplist)
+
+
+
+
     def readvfxshotlist(self, vfxshotlistpath):
         for item in self._cliplist:
             item['shot'] = []
@@ -363,26 +430,131 @@ class IOFTRACK(object):
                     else:
                         clip['shot'].append(sheet.cell(row, 2).value)
 
-    def renametoVFX(self):
+    def renameandcopytoVFX(self, copypath,
+                           FTRACK_SERVER='http://192.168.9.200',
+                           FTRACK_APIKEY='b445309f-1c5d-40ac-b68b-3fdfb4f3ccb9',
+                           LOGNAME='andyguo', PROJECTNAME='Piggy Bank'
+                           ):
         digitregex = re.compile(r'(\d{3,})')
+        os.environ['FTRACK_SERVER'] = FTRACK_SERVER
+        os.environ['FTRACK_APIKEY'] = FTRACK_APIKEY
+        os.environ['LOGNAME'] = LOGNAME
+        import ftrack
+
+        try:
+            project = ftrack.getProject(PROJECTNAME)
+            print('== get asset types ==')
+            platetypes = [x for x in ftrack.getAssetTypes() if x.get('name') == 'Plate']
+            # print(platetypes)
+
+            print('== get task types ==')
+            tasktypes = [x for x in ftrack.getTaskTypes() if x.get('name') == 'Plate']
+            # print(tasktypes)
+        except:
+            print('this project not available in ftrack')
+
         for j in xrange(len(self._cliplist)):
             item = self._cliplist[j]
-            duration = item['endframe'] - item['startframe'] + 1
-            m = list(digitregex.finditer(item['metadata'][0]['filepath']))[-1]
+            duration = int(item['endframe']) - int(item['startframe']) + 1
             for i in xrange(duration):
-                diframe = str(item['startframe'] + i).zfill(m.end() - m.start())
+                # diframe = str(item['startframe'] + i).zfill(m.end() - m.start())
                 oldname = item['metadata'][i]['filepath']
                 newname = item['sequence'][0] + '_' + item['shot'][0] + '_plate_' + ('%04d' % (1001 + i)) + \
                           os.path.splitext(oldname)[-1]
-                newname = os.path.join(os.path.dirname(oldname), newname)
+                # try:
+                #     newname = os.path.join(os.path.dirname(oldname), newname)
+                #     os.rename(oldname, newname)
+                # except:
+                #     print('something error in rename files')
                 # print(oldname, newname)
-                os.rename(oldname, newname)
+
+            copyfoldername = os.path.dirname(oldname)
             if self._shouldrenamefolder:
-                oldfolder = os.path.dirname(oldname)
+                oldfolder = os.path .dirname(oldname)
                 newfolder = os.path.join(os.path.dirname(os.path.dirname(oldname)),
                                          ('%04d' % (j + 1)) + '_' + item['sequence'][0] + '_' + item['shot'][0])
-                # print(oldfolder, newfolder)
-                os.rename(oldfolder, newfolder)
+                print(oldfolder, newfolder)
+                try:
+                    os.rename(oldfolder, newfolder)
+                    copyfoldername = newfolder
+                except:
+                    print('something error in rename folders')
+
+
+            # copy to NAS using rsync
+
+            cmd = 'rsync -avr --progress %s %s' % (copyfoldername.replace(' ', r'\ '), copypath.replace(' ', '\ '))
+            print(cmd)
+            terminal = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, bufsize=1)
+            with terminal.stdout:
+                for line in iter(terminal.stdout.readline, b''):
+                    print line,
+            terminal.wait()
+
+            # update ftrack Assetbuild and shot
+
+            shot = ''
+            assetbuild = ''
+            try:
+                print('== update shot info ==')
+                shot = ftrack.getShot([PROJECTNAME, item['sequence'][0], item['shot'][0]])
+                temp = {}
+                temp['01_sequence'] = item['sequence'][0]
+                temp['02_shot'] = item['shot'][0]
+                temp['05_s3d'] = item['s3d']
+                temp['06_metadata'] = str(item['metadata'])
+                temp['03_startframe'] = item['startframe']
+                temp['04_endframe'] = item['endframe']
+                shot.setMeta(temp)
+            except:
+                print('no such shot %s_%s' % (item['sequence'][0], item['shot'][0]))
+
+            try:
+                assetbuildname = '%s_%s' % (item['sequence'][0], item['shot'][0])
+                previousvesions = [x for x in ftrack.getShot([PROJECTNAME, 'Asset builds']).getShots() if assetbuildname in x.getName()]
+                # print(previousvesions)
+
+                print('== check previous versions ==')
+                if len(previousvesions) > 0:
+                    # print('already got %d verions' % len(previousvesions))
+                    assetbuildname = '%s_%s_plate_%02d' % (item['sequence'][0], item['shot'][0], len(previousvesions)+1)
+                else:
+                    assetbuildname = '%s_%s_plate_01' % (item['sequence'][0], item['shot'][0])
+
+                print('== create new asset build ==')
+                newassetbuild = project.createAssetBuild(assetbuildname)
+                newassetbuild.set('typeid', tasktypes[0].get('typeid'))
+
+                print('== create new asset ==')
+                asset = newassetbuild.createAsset(name=assetbuildname, assetType=platetypes[0].get('short'))
+                version = asset.createVersion(comment='uploaded by IOFTRACK')
+
+                for index, frame in enumerate(item['metadata']):
+                    # print(item['sequence'][0] + '_' + item['shot'][0]
+                    #       + '_plate_' +
+                    #       ('%04d' % (1001 + index)) +
+                    #       os.path.splitext(oldname)[-1]
+                    #       )
+                    version.createComponent(name=(item['sequence'][0] + '_' + item['shot'][0]
+                                                  + '_plate_' +
+                                                  ('%04d' % (1001 + index)) +
+                                                  os.path.splitext(oldname)[-1]
+                                                  ),
+                                            path=(item['sequence'][0] + '_' + item['shot'][0]
+                                                  + '_plate_' +
+                                                  ('%04d' % (1001 + index)) +
+                                                  os.path.splitext(oldname)[-1]
+                                                  ))
+                asset.publish()
+
+
+            except:
+                print('something error with creating asset')
+
+
+
+
+
 
     def updateftrackshotinfo(self, FTRACK_SERVER='http://192.168.9.200',
                              FTRACK_APIKEY='b445309f-1c5d-40ac-b68b-3fdfb4f3ccb9',
@@ -415,18 +587,22 @@ class IOFTRACK(object):
                     shot.setMeta(temp)
                     # break
                 except:
-                    print('no such shot')
+                    print('no such shot %s_%s', clip['sequence'][0], clip['shot'][0])
 
 
 if __name__ == '__main__':
     testclass = IOFTRACK()
-    testclass.scantranscodefiles(r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416 copy/Deliverable')
-    testclass.readvfxshotlist(
-        r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416/Deliverable/template copy.xls')
-    testclass.conformdb(r'/Users/mac/Desktop/Original.db')
+    # testclass.scantranscodefiles(r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416 copy/Deliverable')
+    # testclass.readvfxshotlist(
+    #     r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416/Deliverable/template copy.xls')
+    # testclass.conformdb(r'/Users/mac/Desktop/Original.db')
+    # print(testclass._cliplist)
     # testclass.conformdb(r'/Users/mac/Desktop/~Footage.db')
     # testclass.renametoVFX()
-    testclass.updateftrackshotinfo()
+    # testclass.savestatus('/Users/mac/Desktop/saves.xml')
+    testclass.loadstatus('/Users/mac/Desktop/saves.xml')
+    testclass.renameandcopytoVFX(r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW')
+    # testclass.updateftrackshotinfo()
 
 
     # print(testclass._cliplist)
