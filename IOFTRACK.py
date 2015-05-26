@@ -493,21 +493,14 @@ class IOFTRACK(object):
 
             # update ftrack Assetbuild and shot
 
-            shot = ''
-            assetbuild = ''
+
             try:
                 print('== update shot info ==')
                 shot = ftrack.getShot([PROJECTNAME, item['sequence'][0], item['shot'][0]])
-                temp = {}
-                temp['01_sequence'] = item['sequence'][0]
-                temp['02_shot'] = item['shot'][0]
-                temp['05_s3d'] = item['s3d']
-                temp['06_metadata'] = str(item['metadata'])
-                temp['03_startframe'] = item['startframe']
-                temp['04_endframe'] = item['endframe']
-                shot.setMeta(temp)
+
             except:
                 print('no such shot %s_%s' % (item['sequence'][0], item['shot'][0]))
+                break
 
             try:
                 assetbuildname = '%s_%s' % (item['sequence'][0], item['shot'][0])
@@ -524,6 +517,14 @@ class IOFTRACK(object):
                 print('== create new asset build ==')
                 newassetbuild = project.createAssetBuild(assetbuildname)
                 newassetbuild.set('typeid', tasktypes[0].get('typeid'))
+                temp = {}
+                temp['01_sequence'] = item['sequence'][0]
+                temp['02_shot'] = item['shot'][0]
+                temp['05_s3d'] = item['s3d']
+                temp['06_metadata'] = str(item['metadata'])
+                temp['03_startframe'] = item['startframe']
+                temp['04_endframe'] = item['endframe']
+                newassetbuild.setMeta(temp)
 
                 print('== create new asset ==')
                 asset = newassetbuild.createAsset(name=assetbuildname, assetType=platetypes[0].get('short'))
@@ -547,9 +548,22 @@ class IOFTRACK(object):
                                                   ))
                 asset.publish()
 
+                try:
+                    print('== link asset to shot and link reverse ==')
+                    # print('asset', newassetbuild)
+                    # print('shot', shot)
+                    newassetbuild.addSuccessor(shot)
+                    newassetbuild.addPredecessor(shot)
+
+                except:
+                    print('something error in link asset to shot')
+                    break
+
 
             except:
                 print('something error with creating asset')
+                break
+
 
 
 
