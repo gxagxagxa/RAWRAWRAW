@@ -12,7 +12,6 @@ import copy
 import struct
 import sqlite3
 
-
 class IOFTRACK(object):
     def __init__(self):
         self._cliplist = []
@@ -430,6 +429,7 @@ class IOFTRACK(object):
                     else:
                         clip['shot'].append(sheet.cell(row, 2).value)
 
+
     def renameandcopytoVFX(self, copypath,
                            FTRACK_SERVER='http://192.168.9.200',
                            FTRACK_APIKEY='b445309f-1c5d-40ac-b68b-3fdfb4f3ccb9',
@@ -439,6 +439,7 @@ class IOFTRACK(object):
         os.environ['FTRACK_SERVER'] = FTRACK_SERVER
         os.environ['FTRACK_APIKEY'] = FTRACK_APIKEY
         os.environ['LOGNAME'] = LOGNAME
+
         import ftrack
 
         try:
@@ -454,6 +455,9 @@ class IOFTRACK(object):
             print('this project not available in ftrack')
 
         for j in xrange(len(self._cliplist)):
+
+            # rename every frame as VFX needs
+
             item = self._cliplist[j]
             duration = int(item['endframe']) - int(item['startframe']) + 1
             for i in xrange(duration):
@@ -503,7 +507,7 @@ class IOFTRACK(object):
                 break
 
             try:
-                assetbuildname = '%s_%s' % (item['sequence'][0], item['shot'][0])
+                assetbuildname = '%s_%s_plate' % (item['sequence'][0], item['shot'][0])
                 previousvesions = [x for x in ftrack.getShot([PROJECTNAME, 'Asset builds']).getShots() if assetbuildname in x.getName()]
                 # print(previousvesions)
 
@@ -514,7 +518,7 @@ class IOFTRACK(object):
                 else:
                     assetbuildname = '%s_%s_plate_01' % (item['sequence'][0], item['shot'][0])
 
-                print('== create new asset build ==')
+                print('== create new assetbuild ==')
                 newassetbuild = project.createAssetBuild(assetbuildname)
                 newassetbuild.set('typeid', tasktypes[0].get('typeid'))
                 temp = {}
@@ -525,6 +529,7 @@ class IOFTRACK(object):
                 temp['03_startframe'] = item['startframe']
                 temp['04_endframe'] = item['endframe']
                 newassetbuild.setMeta(temp)
+
 
                 print('== create new asset ==')
                 asset = newassetbuild.createAsset(name=assetbuildname, assetType=platetypes[0].get('short'))
@@ -558,6 +563,10 @@ class IOFTRACK(object):
                 except:
                     print('something error in link asset to shot')
                     break
+
+                newassetbuild.createTask('upload by IO',
+                                        taskType=[x for x in ftrack.getTaskTypes() if x.get('name') == 'Plate'][0],
+                                        taskStatus=[y for y in ftrack.getTaskStatuses() if y.get('name') == 'Approved'][0])
 
 
             except:
@@ -616,7 +625,7 @@ if __name__ == '__main__':
     # testclass.savestatus('/Users/mac/Desktop/saves.xml')
     testclass.loadstatus('/Users/mac/Desktop/saves.xml')
     testclass.renameandcopytoVFX(r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW')
-    # testclass.updateftrackshotinfo()
+
 
 
     # print(testclass._cliplist)
