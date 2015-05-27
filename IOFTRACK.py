@@ -3,6 +3,7 @@
 __author__ = 'mac'
 
 import os
+import sys
 import re
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as MINIDOM
@@ -11,6 +12,8 @@ import subprocess
 import copy
 import struct
 import sqlite3
+
+APP_PATH = os.path.realpath(sys.path[0])
 
 class IOFTRACK(object):
     def __init__(self):
@@ -465,11 +468,11 @@ class IOFTRACK(object):
                 oldname = item['metadata'][i]['filepath']
                 newname = item['sequence'][0] + '_' + item['shot'][0] + '_plate_' + ('%04d' % (1001 + i)) + \
                           os.path.splitext(oldname)[-1]
-                # try:
-                #     newname = os.path.join(os.path.dirname(oldname), newname)
-                #     os.rename(oldname, newname)
-                # except:
-                #     print('something error in rename files')
+                try:
+                    newname = os.path.join(os.path.dirname(oldname), newname)
+                    os.rename(oldname, newname)
+                except:
+                    print('something error in rename files')
                 # print(oldname, newname)
 
             copyfoldername = os.path.dirname(oldname)
@@ -477,7 +480,7 @@ class IOFTRACK(object):
                 oldfolder = os.path .dirname(oldname)
                 newfolder = os.path.join(os.path.dirname(os.path.dirname(oldname)),
                                          ('%04d' % (j + 1)) + '_' + item['sequence'][0] + '_' + item['shot'][0])
-                print(oldfolder, newfolder)
+                # print(oldfolder, newfolder)
                 try:
                     os.rename(oldfolder, newfolder)
                     copyfoldername = newfolder
@@ -553,6 +556,8 @@ class IOFTRACK(object):
                                                   ))
                 asset.publish()
 
+
+
                 try:
                     print('== link asset to shot and link reverse ==')
                     # print('asset', newassetbuild)
@@ -568,9 +573,25 @@ class IOFTRACK(object):
                                         taskType=[x for x in ftrack.getTaskTypes() if x.get('name') == 'Plate'][0],
                                         taskStatus=[y for y in ftrack.getTaskStatuses() if y.get('name') == 'Approved'][0])
 
+                try:
+                    print('== create thumbnails ==')
+                    convertcmd = 'convert %s -size 1280x720 %s' % (
+                        os.path.join(os.path.dirname(item['metadata'][0]['filepath']),
+                                     (item['sequence'][0] + '_' + item['shot'][0]
+                                      + '_plate_' +
+                                      ('%04d' % (1001)) +
+                                      os.path.splitext(oldname)[-1]
+                                      )).replace(' ', r'\ '), os.path.join(APP_PATH, assetbuildname+'.jpg').replace(' ', r'\ '))
+                    print(convertcmd)
+                    convermessage = subprocess.Popen(convertcmd, shell=True, stdout=subprocess.PIPE).communicate()[0]
+                    newassetbuild.createThumbnail(os.path.join(APP_PATH, assetbuildname + '.jpg'))
+
+                except:
+                    print('== something error in creating thumbnails')
+
 
             except:
-                print('something error with creating asset')
+                print('something error with creating assetbuild')
                 break
 
 
