@@ -217,10 +217,10 @@ class generaterawdb(object):
         # print(r3dscv)
         for index, item in enumerate(r3dlist):
             try:
-                os.symlink(item,
-                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D', '%08d.R3D' % index))
+                # os.symlink(item,
+                #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D', '%08d.R3D' % index))
                 cmd = 'REDline --i {0} --printMeta 2 >> {1}'.format(
-                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'R3D', '%08d.R3D' % index), r3dscv)
+                    item.replace(' ', r'\ '), r3dscv)
                 subprocess.call(cmd, shell=True)
 
             except:
@@ -541,10 +541,9 @@ class generaterawdb(object):
         try:
             cursor = connect.cursor()
             for index, item in enumerate(movlist):
-                os.symlink(item,
-                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov', '%08d.mov' % index))
-                cmd = ['ffmpeg -i {0}'.format(
-                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov', '%08d.mov' % index))]
+                # os.symlink(item,
+                #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'mov', '%08d.mov' % index))
+                cmd = ['ffmpeg -i {0}'.format(item.replace(' ', r'\ '))]
                 message = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()[1]
 
                 movmetadata = self._processmovmetadata(message)
@@ -631,10 +630,10 @@ class generaterawdb(object):
         try:
             cursor = connect.cursor()
             for index, item in enumerate(mp4list):
-                os.symlink(item,
-                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4', '%08d.mp4' % index))
+                # os.symlink(item,
+                #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4', '%08d.mp4' % index))
                 cmd = ['ffmpeg -i {0}'.format(
-                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'mp4', '%08d.mp4' % index))]
+                    item.replace(' ', r'\ '))]
                 message = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()[1]
 
                 mp4metadata = self._processmp4metadata(message)
@@ -693,11 +692,10 @@ class generaterawdb(object):
         try:
             cursor = connect.cursor()
             for index, item in enumerate(dpxlist):
-                os.symlink(item,
-                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index))
+                # os.symlink(item,
+                #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index))
                 dpxheader = ()
-                with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index),
-                          'rb') as dpxfile:
+                with open(item.replace(' ', r'\ '), 'rb') as dpxfile:
                     if struct.unpack('4s', dpxfile.read(4)) == 'SDPX':
                         dpxfile.seek(0)
                         dpxheader = struct.unpack(
@@ -814,10 +812,10 @@ class generaterawdb(object):
         try:
             cursor = connect.cursor()
             for index, item in enumerate(mxflist):
-                os.symlink(item,
-                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf', '%08d.mxf' % index))
+                # os.symlink(item,
+                #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf', '%08d.mxf' % index))
                 cmd = ['ffmpeg -i {0}'.format(
-                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'mxf', '%08d.mxf' % index))]
+                    item.replace(' ', r'\ '))]
                 message = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()[1]
 
                 mxfmetadata = self._processmxfmetadata(message)
@@ -899,10 +897,9 @@ class generaterawdb(object):
         try:
             cursor = connect.cursor()
             for index, item in enumerate(exrlist):
-                os.symlink(item,
-                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'exr', '%08d.exr' % index))
-                cmd = ['exrheader {0}'.format(
-                    os.path.join(self._temppath, os.path.basename(self._scanpath), 'exr', '%08d.exr' % index))]
+                # os.symlink(item,
+                #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'exr', '%08d.exr' % index))
+                cmd = ['exrheader {0}'.format(item.replace(' ', r'\ '))]
                 message = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()[0]
                 # print(message)
                 exrmetadata = self._processexrmessage(message)
@@ -966,11 +963,10 @@ class generaterawdb(object):
         try:
             cursor = connect.cursor()
             for index, item in enumerate(cinelist):
-                os.symlink(item,
-                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index))
+                # os.symlink(item,
+                #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index))
 
-                with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index),
-                          'rb') as cinefile:
+                with open(item.replace(' ', r'\ '), 'rb') as cinefile:
                     cinefile.seek(0)
                     cineheader = struct.unpack('<2s 3H i I i 4I 2I'
                                                'I i i H H I I i i I I'
@@ -1061,11 +1057,10 @@ class generaterawdb(object):
         try:
             cursor = connect.cursor()
             for index, item in enumerate(dnglist):
-                os.symlink(item,
-                           os.path.join(self._temppath, os.path.basename(self._scanpath), 'dng', '%08d.dng' % index))
+                # os.symlink(item,
+                #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'dng', '%08d.dng' % index))
 
-                with open(os.path.join(self._temppath, os.path.basename(self._scanpath), 'dng', '%08d.dng' % index),
-                          'rb') as dngfile:
+                with open(item.replace(' ', r'\ '), 'rb') as dngfile:
                     dngmetadata = {'MASTER_TC': '00:00:00:00',
                                    'REEL': '--',
                                    'width': '',
@@ -1241,7 +1236,7 @@ class generaterawdb(object):
 if __name__ == '__main__':
     testclass = generaterawdb()
     # testclass._scanpath = r'/Volumes/VIP_DATA/TEST_Footage'
-    testclass._scanpath = r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416 copy/Original'
-    # testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
+    # testclass._scanpath = r'/Volumes/work/TEST_Footage/IOTOVFX_WORKFLOW/PIPELINE_TEST_20150416 copy/Original'
+    testclass._scanpath = r'/Users/andyguo/Desktop/work/FOOTAGE'
     testclass.generatedb()
     pass
