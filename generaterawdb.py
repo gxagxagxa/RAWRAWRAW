@@ -508,7 +508,7 @@ class generaterawdb(object):
         else:
             ff = int(timecode[9:11])
         # print(ffps, hh, mm, ss, ff)
-        framecount = int((hh * 3600 * ffps) + int(mm * 60 * ffps) + int(ss * ffps) + ff)
+        framecount = round((hh * 3600 * ffps) + int(mm * 60 * ffps) + int(ss * ffps) + ff)
         # print(framecount)
         return framecount
 
