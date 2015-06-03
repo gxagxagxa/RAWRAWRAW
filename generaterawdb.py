@@ -695,7 +695,7 @@ class generaterawdb(object):
                 # os.symlink(item,
                 #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'dpx', '%08d.dpx' % index))
                 dpxheader = ()
-                with open(item.replace(' ', r'\ '), 'rb') as dpxfile:
+                with open(item, 'rb') as dpxfile:
                     if struct.unpack('4s', dpxfile.read(4)) == 'SDPX':
                         dpxfile.seek(0)
                         dpxheader = struct.unpack(
@@ -966,7 +966,7 @@ class generaterawdb(object):
                 # os.symlink(item,
                 #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'cine', '%08d.cine' % index))
 
-                with open(item.replace(' ', r'\ '), 'rb') as cinefile:
+                with open(item, 'rb') as cinefile:
                     cinefile.seek(0)
                     cineheader = struct.unpack('<2s 3H i I i 4I 2I'
                                                'I i i H H I I i i I I'
@@ -1060,7 +1060,7 @@ class generaterawdb(object):
                 # os.symlink(item,
                 #            os.path.join(self._temppath, os.path.basename(self._scanpath), 'dng', '%08d.dng' % index))
 
-                with open(item.replace(' ', r'\ '), 'rb') as dngfile:
+                with open(item, 'rb') as dngfile:
                     dngmetadata = {'MASTER_TC': '00:00:00:00',
                                    'REEL': '--',
                                    'width': '',
