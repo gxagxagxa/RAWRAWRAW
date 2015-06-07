@@ -63,9 +63,10 @@ class CONFORM(object):
             for index, clip in enumerate(EDLobject._edlclip):
 
                 if len(clip['matched']) > 0:
-                    linestring = clip['matched'][0][0]
-                    print(linestring)
-                    f.write(linestring+os.linesep)
+                    for linestring in clip['matched']:
+                        # linestring = clip['matched'][0][0]
+                        print(linestring)
+                        f.write(linestring[0]+os.linesep)
 
 
 
