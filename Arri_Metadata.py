@@ -240,8 +240,10 @@ class Arri_Metadata(object):
             self.header['Printer_Lights_G'] = arristruct[66]
             self.header['Printer_Lights_B'] = arristruct[67]
 
-            CdlApplicationMode = ('ARRI_LOOK_NONE', 'ARRI_LOOK_ALEXA_VIDEO', 'ARRI_LOOK_CDL_VIDEO', 'ARRI_LOOK_CDL_LOGC')
-            self.header['CDL_Mode'] = CdlApplicationMode[arristruct[68]]
+            #TODO: this will out of range sometimes?
+            # CdlApplicationMode = ('ARRI_LOOK_NONE', 'ARRI_LOOK_ALEXA_VIDEO', 'ARRI_LOOK_CDL_VIDEO', 'ARRI_LOOK_CDL_LOGC')
+            # print(arristruct[68])
+            # self.header['CDL_Mode'] = CdlApplicationMode[arristruct[68]]
 
             CameraTypeID = ('none', 'D21', 'ALEXA', 'ALEXA_65')
             self.header['Camera_Family'] = CameraTypeID[arristruct[74]]
@@ -343,10 +345,11 @@ class Arri_Metadata(object):
 
             self.header['END_TC'] = self.__timecodeadd(self.header['Master_TC'], '00:00:00:01', self.header['Sensor_FPS'])
 
+        return self.header
 
 if __name__ == '__main__':
     testmetadata = Arri_Metadata()
-    # testmetadata.metadata('/Volumes/work/TEST_Footage/~Footage/Alexa-Day/00100000147.0000025.ari')
+    myheader = testmetadata.metadata('/Users/mac/Desktop/meta/A003C028_140924_R6QB.0403757.ari')
     # testmetadata.metadata('/Volumes/VIP_DATA/TEST_Footage/Alexa/XT/A001C001_140207_R3HU.1178954.ari')
-    testmetadata.metadata('/Users/andyguo/Desktop/untitled folder/A008C003_150320_R0DA.0000123.ari')
-    print(testmetadata.header)
+    # testmetadata.metadata('/Users/andyguo/Desktop/untitled folder/A008C003_150320_R0DA.0000123.ari')
+    print(myheader)
