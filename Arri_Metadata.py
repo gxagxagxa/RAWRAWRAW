@@ -4,6 +4,7 @@
 import struct
 import re
 import collections
+import os
 
 
 class Arri_Metadata(object):
@@ -349,9 +350,26 @@ class Arri_Metadata(object):
 
         return self.header
 
+
+
+    def csvString(self, sep=','):
+        csvstring = ''
+        csvstring = sep.join(self.header.keys())
+        csvstring += os.linesep
+        csvstring += sep.join(map(str, self.header.values()))
+        csvstring += os.linesep
+
+        if len(csvstring) > 0:
+            return csvstring
+        else:
+            return None
+
+
+
+
 if __name__ == '__main__':
     testmetadata = Arri_Metadata()
     myheader = testmetadata.metadata('/Users/mac/Desktop/meta/A003C028_140924_R6QB.0403757.ari')
     # testmetadata.metadata('/Volumes/VIP_DATA/TEST_Footage/Alexa/XT/A001C001_140207_R3HU.1178954.ari')
     # testmetadata.metadata('/Users/andyguo/Desktop/untitled folder/A008C003_150320_R0DA.0000123.ari')
-    print(myheader)
+    print(testmetadata.csvString())
